@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Rastreio de Pedido</title>
+  <meta name="robots" content="noindex,nofollow"/>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --card-bg: #ffffff;
+      --primary: #2563eb; /* Azul Brand */
+      --primary-light: #eff6ff;
+      --success: #16a34a;
+      --success-light: #dcfce7;
+      --warning: #ca8a04;
+      --warning-light: #fef9c3;
+      --text-main: #1f2937;
+      --text-muted: #6b7280;
+      --border: #e5e7eb;
+      --radius: 12px;
+      --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text-main);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Header Estilo App */
+    header {
+      background: var(--card-bg);
+      padding: 20px 0;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    .header-content {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .logo-icon {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, var(--primary), #60a5fa);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 24px;
+      box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    p.subtitle {
+      margin: 2px 0 0 0;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* Formulário de Busca */
+    .search-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-top: 24px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    .input-group {
+      display: grid;
+      gap: 12px;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    input {
+      border: 1px solid var(--border);
+      background: #f9fafb;
+    }
+    input:focus {
+      border-color: var(--primary);
+      background: #fff;
+      box-shadow: 0 0 0 3px var(--primary-light);
+    }
+
+    button {
+      border: none;
+      background: var(--text-main);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: #000; }
+    
+    button.refresh-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 8px 16px;
+      font-size: 13px;
+      width: auto;
+    }
+    button.refresh-btn:hover { background: #f3f4f6; }
+
+    /* Resultados */
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .tracking-code {
+      font-family: monospace;
+      font-size: 15px;
+      background: var(--primary-light);
+      color: var(--primary);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    /* KPIs (Status e Previsão) */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 30px;
+    }
+
+    .kpi-card {
+      background: #f8fafc;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .kpi-label { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi-value { font-size: 15px; font-weight: 700; color: var(--text-main); }
+    
+    .status-highlight { color: var(--success); }
+
+    /* Timeline Moderna */
+    .timeline {
+      position: relative;
+      padding-left: 20px; /* espaço para linha */
+    }
+    
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 7px; /* centraliza no dot */
+      top: 10px;
+      bottom: 20px;
+      width: 2px;
+      background: #e5e7eb;
+      border-radius: 2px;
+    }
+
+    .event {
+      position: relative;
+      padding-left: 25px;
+      padding-bottom: 32px;
+    }
+
+    .event:last-child { padding-bottom: 0; }
+
+    .dot {
+      position: absolute;
+      left: -20px; /* Alinha com a linha principal */
+      top: 0;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      border: 3px solid #d1d5db;
+      z-index: 2;
+    }
+
+    /* Destaque para o evento mais recente */
+    .event.latest .dot {
+      border-color: var(--success);
+      background: var(--success);
+      box-shadow: 0 0 0 4px var(--success-light);
+      animation: pulse 2s infinite;
+    }
+    
+    .event.latest .ev-title { color: var(--success); }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.4); }
+      70% { box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+    }
+
+    .ev-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 4px;
+    }
+
+    .ev-title {
+      font-weight: 700;
+      font-size: 15px;
+      line-height: 1.4;
+    }
+
+    .ev-date {
+      font-size: 12px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      background: #fff;
+      padding-left: 8px;
+    }
+
+    .ev-detail {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      line-height: 1.5;
+    }
+
+    .ev-location {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 8px;
+      font-size: 12px;
+      background: #f3f4f6;
+      padding: 4px 8px;
+      border-radius: 6px;
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    /* Utilitários */
+    .msg-box { padding: 16px; border-radius: 8px; margin-top: 16px; font-size: 14px; text-align: center; }
+    .msg-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .msg-info { color: var(--text-muted); }
+    
+    .hidden { display: none; }
+    
+    /* Configuração Script */
+    .config-box {
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px dashed var(--warning);
+      background: var(--warning-light);
+      border-radius: 8px;
+    }
+    .config-box input { margin-bottom: 8px; }
+
+    @media(min-width: 600px) {
+      .input-group { grid-template-columns: 1fr 1fr auto; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="header-content">
+      <div class="logo-icon">
+        <i class="bi bi-box-seam"></i>
+      </div>
+      <div>
+        <h1>Central de Rastreio</h1>
+        <p class="subtitle">Acompanhe seu pedido em tempo real</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  
+  <div class="search-card">
+    <div class="input-group">
+      <input id="id" placeholder="ID SuperFrete (Opcional)">
+      <input id="code" placeholder="Código Correios (ex: AA123456789BR)">
+      <button onclick="consultar()"><i class="bi bi-search"></i> Buscar</button>
+    </div>
+
+    <div id="saida"></div>
+
+    <div id="boxScript" class="config-box hidden">
+      <p style="margin:0 0 8px 0; font-size:13px; font-weight:bold">Configuração Inicial Necessária</p>
+      <input id="script" placeholder="Cole a URL do seu WebApp (Script Google)">
+      <button onclick="salvarScript()">Salvar Configuração</button>
+    </div>
+  </div>
+
+  <div id="resultado-container" class="search-card hidden">
+    </div>
+  
+  <p style="text-align:center; font-size:12px; color:#9ca3af; margin-top:30px;">
+    Rastreamento seguro e sem anúncios.
+  </p>
+
+</div>
+
+<script>
+  const LS_KEY = "SCRIPT_URL";
+
+  // Ícones baseados no status
+  function getIconeStatus(status) {
+    const s = status.toLowerCase();
+    if (s.includes('entregue')) return '<i class="bi bi-check-circle-fill"></i>';
+    if (s.includes('saiu') || s.includes('caminho')) return '<i class="bi bi-truck"></i>';
+    if (s.includes('postado')) return '<i class="bi bi-box-seam"></i>';
+    if (s.includes('aguardando')) return '<i class="bi bi-clock-history"></i>';
+    if (s.includes('fiscaliza')) return '<i class="bi bi-shield-exclamation"></i>';
+    return '<i class="bi bi-record-circle"></i>';
+  }
+
+  function qs(name){
+    const u = new URL(location.href);
+    return u.searchParams.get(name);
+  }
+
+  function salvarScript(){
+    const v = (document.getElementById("script").value || "").trim();
+    if (!v) return;
+    localStorage.setItem(LS_KEY, v);
+    document.getElementById("boxScript").classList.add("hidden");
+    consultar();
+  }
+
+  async function carregarConfigAuto(){
+    const scriptParam = qs("script");
+    if (scriptParam) {
+      const v = decodeURIComponent(scriptParam).trim();
+      if (v) { localStorage.setItem(LS_KEY, v); return v; }
+    }
+
+    const ls = (localStorage.getItem(LS_KEY) || "").trim();
+    if (ls) return ls;
+
+    try {
+      const r = await fetch(new URL("config.json", location.href).toString(), {cache:"no-store"});
+      if (r.ok) {
+        const j = await r.json();
+        const v = (j && j.SCRIPT_URL) ? String(j.SCRIPT_URL).trim() : "";
+        if (v) { localStorage.setItem(LS_KEY, v); return v; }
+      }
+    } catch(e){}
+
+    return "";
+  }
+
+  function formatarDataBR(dtStr){
+    if(!dtStr) return "—";
+    try{
+      const s = String(dtStr).replace(" ", "T").replace(".000000","") + "-03:00";
+      const d = new Date(s);
+      if (isNaN(d.getTime())) return dtStr;
+      // Formato curto e bonito: 15/01 às 14:30
+      return d.toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) + " às " + 
+             d.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" });
+    }catch(e){
+      return dtStr;
+    }
+  }
+
+  function validarCodigo(code){
+    return /^[A-Z]{2}\d{9}[A-Z]{2}$/.test(String(code||"").trim().toUpperCase());
+  }
+
+  function renderTimeline(eventos, codigoObj){
+    if(!eventos || !eventos.length){
+      return `<div class="msg-box msg-info">Nenhuma movimentação encontrada.</div>`;
+    }
+
+    const htmlEventos = eventos.map((ev, idx) => {
+      const isLatest = idx === 0; // O primeiro é o mais recente
+      const icon = getIconeStatus(ev.status || "");
+      
+      return `
+        <div class="event ${isLatest ? 'latest' : ''}">
+          <div class="dot"></div>
+          
+          <div class="ev-header">
+            <div class="ev-title">
+               ${isLatest ? icon : ''} ${ev.status || ""}
+            </div>
+            <div class="ev-date">${formatarDataBR(ev.data)}</div>
+          </div>
+          
+          ${ev.detalhe ? `<div class="ev-detail">${ev.detalhe}</div>` : ""}
+          
+          <div class="ev-place-wrapper">
+             ${ev.origem ? `<div class="ev-location"><i class="bi bi-geo-alt"></i> ${ev.origem} ${ev.destino ? ' ➔ ' + ev.destino : ''}</div>` : ""}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <div class="timeline">
+        ${htmlEventos}
+      </div>
+    `;
+  }
+
+  async function consultar(){
+    const saida = document.getElementById("saida");
+    const containerRes = document.getElementById("resultado-container");
+    
+    // Reset visual
+    saida.innerHTML = "";
+    containerRes.classList.add("hidden");
+    containerRes.innerHTML = "";
+
+    let id = (document.getElementById("id").value || "").trim();
+    let code = (document.getElementById("code").value || "").trim().toUpperCase();
+
+    // URL Params override
+    const idParam = qs("id");
+    const codeParam = qs("code");
+    if (!id && idParam) id = String(idParam).trim();
+    if (!code && codeParam) code = String(codeParam).trim().toUpperCase();
+
+    if(!id && !code){
+      // Não mostra erro se estiver vazio ao abrir, apenas espera o usuário digitar
+      return; 
+    }
+
+    if(code && !validarCodigo(code)){
+      saida.innerHTML = `<div class="msg-box msg-error">Código de rastreio inválido.<br><small>Formato esperado: AA123456789BR</small></div>`;
+      return;
+    }
+
+    const script = await carregarConfigAuto();
+    if(!script){
+      document.getElementById("boxScript").classList.remove("hidden");
+      return;
+    }
+
+    saida.innerHTML = `<div class="msg-box msg-info"><span class="spinner-border spinner-border-sm"></span> Buscando informações...</div>`;
+
+    try{
+      // 1) Busca via SuperFrete ID se houver
+      if(id){
+        const url1 = script + "?rota=rastreio&id=" + encodeURIComponent(id);
+        const r1 = await fetch(url1, {cache:"no-store"});
+        const j1 = await r1.json();
+
+        if(!j1.ok){
+          saida.innerHTML = `<div class="msg-box msg-error">Erro ao buscar etiqueta: ${j1.erro}</div>`;
+          return;
+        }
+
+        if(j1.tracking){
+          code = String(j1.tracking).trim().toUpperCase();
+          document.getElementById("code").value = code;
+        }
+      }
+
+      if(!code){
+        saida.innerHTML = `<div class="msg-box msg-info">Etiqueta gerada, mas ainda sem código de rastreio nos Correios. Tente mais tarde.</div>`;
+        return;
+      }
+
+      // 2) Busca Histórico Correios (Wonca)
+      const url2 = script + "?rota=rastreio_wonca&code=" + encodeURIComponent(code);
+      const r2 = await fetch(url2, {cache:"no-store"});
+      const j2 = await r2.json();
+
+      if(!j2.ok){
+        saida.innerHTML = `<div class="msg-box msg-error">Não foi possível rastrear: ${j2.erro}</div>`;
+        return;
+      }
+
+      const previsao = j2.previsao ? String(j2.previsao) : "A calcular";
+      const eventos = j2.eventos || [];
+      const eventoAtual = eventos.length ? eventos[0] : {};
+      
+      // Limpa loading
+      saida.innerHTML = "";
+      
+      // Monta o Card de Resultado
+      containerRes.innerHTML = `
+        <div class="result-header">
+           <span class="tracking-code"><i class="bi bi-upc-scan"></i> ${j2.codigo || code}</span>
+           <button class="refresh-btn" onclick="consultar()"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
+        </div>
+
+        <div class="kpi-grid">
+           <div class="kpi-card">
+              <span class="kpi-label">Status Atual</span>
+              <span class="kpi-value ${eventoAtual.status?.includes('Entregue') ? 'status-highlight' : ''}">
+                ${eventoAtual.status || "Aguardando"}
+              </span>
+           </div>
+           <div class="kpi-card">
+              <span class="kpi-label">Previsão</span>
+              <span class="kpi-value">${previsao}</span>
+           </div>
+        </div>
+
+        ${renderTimeline(eventos)}
+      `;
+      
+      containerRes.classList.remove("hidden");
+
+    }catch(e){
+      saida.innerHTML = `<div class="msg-box msg-error">Erro de conexão: ${e.message}</div>`;
+    }
+  }
+
+  // Inicialização
+  const idParamInitial = qs("id");
+  const codeParamInitial = qs("code");
+  if (idParamInitial) document.getElementById("id").value = idParamInitial;
+  if (codeParamInitial) document.getElementById("code").value = codeParamInitial;
+
+  if (idParamInitial || codeParamInitial) {
+     consultar();
+  }
+  carregarConfigAuto();
+</script>
+
+</body>
+</html>
