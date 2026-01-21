@@ -1,5 +1,7 @@
 // --- CONTROLE DE VERSÃO E CACHE (MODO SEGURO) ---
 const VERSAO_SISTEMA = "2026-01-20_v5"; 
+const STORAGE_KEY_PRODUTOS = "produtos_cache";
+
 
 // --- NOVO MODO DE SEGURANÇA MÁXIMA ---
 function podeUsarStorage() {
@@ -16,15 +18,23 @@ function podeUsarStorage() {
     }
 }
 
-// Substitua seu bloco de limpeza de cache por este:
+// Substitua seu bloco de limpeza de cache por este (SAFE + sem erro de sintaxe):
 try {
-    if (podeUsarStorage()) {
-        if (localStorage.getItem("versao_cache") !== VERSAO_SISTEMA) {
-            localStorage.clear();
-            localStorage.setItem("versao_cache", VERSAO_SISTEMA);
-        }
+  if (podeUsarStorage()) {
+    const versaoAtual = lsGetRaw("versao_cache"); // usa helper safe
+    if (versaoAtual !== VERSAO_SISTEMA) {
+      // limpa só o que é do seu app
+      lsRemove("carrinho");
+      lsRemove(STORAGE_KEY_PRODUTOS);
+      lsRemove("loja_config");
+      lsRemove("frete_cache");
+      lsRemove("sessao_cliente");
+
+      lsSetRaw("versao_cache", VERSAO_SISTEMA); // usa helper safe
     }
-} catch (e) { }
+  }
+} catch (e) {}
+
 
 
 //----
@@ -141,7 +151,7 @@ function filtrarProdutos() {
     const termo = normalizarTexto(obterTermoBusca());
 
 if (!Array.isArray(ALL_PRODUTOS) || ALL_PRODUTOS.length === 0) {
-    ALL_PRODUTOS = lsGetJSON('calçados', []);
+    ALL_PRODUTOS = lsGetJSON(STORAGE_KEY_PRODUTOS, []);
 }
 
     const filtrados = ALL_PRODUTOS.filter(p => {
@@ -201,14 +211,15 @@ function mascaraCep(t) {
 function carregar_config() {
     var url = CONFIG.SCRIPT_URL + "?rota=config&nocache=" + new Date().getTime();
 
-    // Tenta carregar do Cache APENAS se o storage estiver liberado
-    if (podeUsarStorage()) {
-        var configCache = JSON.parse(localStorage.getItem('loja_config'));
-        if (configCache) {
-            CONFIG_LOJA = configCache;
-            aplicar_config();
-        }
+// Tenta carregar do Cache APENAS se o storage estiver liberado (modo seguro)
+if (podeUsarStorage()) {
+    var configCache = lsGetJSON('loja_config', null);
+    if (configCache) {
+        CONFIG_LOJA = configCache;
+        aplicar_config();
     }
+}
+
 
     fetch(url)
         .then(res => res.json())
@@ -220,9 +231,10 @@ function carregar_config() {
             } else { config = data; }
 
             // Salva no cache apenas se permitido
-            if (podeUsarStorage()) {
-                localStorage.setItem("loja_config", JSON.stringify(config));
-            }
+if (podeUsarStorage()) {
+    lsSetJSON("loja_config", config);
+}
+
             
             CONFIG_LOJA = config;
             aplicar_config();
@@ -233,6 +245,77 @@ function carregar_config() {
             carregar_produtos(); // CHAMADA DE EMERGÊNCIA: Garante que os produtos carreguem mesmo se a config falhar
         });
 }
+
+// --- ACESSIBILIDADE: calcula cor de texto (preto/branco) com bom contraste ---
+function hexToRgb(hex) {
+  if (!hex) return null;
+  let h = String(hex).trim();
+
+  // aceita "0d6efd" ou "#0d6efd"
+  if (!h.startsWith("#")) h = "#" + h;
+
+  // suporta #RGB
+  if (h.length === 4) {
+    h = "#" + h[1] + h[1] + h[2] + h[2] + h[3] + h[3];
+  }
+  if (!/^#[0-9a-fA-F]{6}$/.test(h)) return null;
+
+  const r = parseInt(h.slice(1, 3), 16);
+  const g = parseInt(h.slice(3, 5), 16);
+  const b = parseInt(h.slice(5, 7), 16);
+  return { r, g, b };
+}
+
+function luminanciaRelativa({ r, g, b }) {
+  // WCAG relative luminance
+  const srgb = [r, g, b].map(v => v / 255).map(v =>
+    v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+  );
+  return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+}
+
+function escolherTextoContraste(bgHex) {
+  const rgb = hexToRgb(bgHex);
+  if (!rgb) return "#FFFFFF"; // fallback
+  const L = luminanciaRelativa(rgb);
+
+  // contraste com branco e preto (WCAG)
+  const contrasteBranco = (1.05) / (L + 0.05);
+  const contrastePreto  = (L + 0.05) / (0.05);
+
+  return (contrastePreto >= contrasteBranco) ? "#000000" : "#FFFFFF";
+}
+
+function escurecerHex(bgHex, fator = 0.15) {
+  const rgb = hexToRgb(bgHex);
+  if (!rgb) return bgHex;
+  const clamp = (n) => Math.max(0, Math.min(255, n));
+  const r = clamp(Math.round(rgb.r * (1 - fator)));
+  const g = clamp(Math.round(rgb.g * (1 - fator)));
+  const b = clamp(Math.round(rgb.b * (1 - fator)));
+  return "#" + [r,g,b].map(v => v.toString(16).padStart(2,"0")).join("");
+}
+
+function aplicarTemaAcessivel(corPrincipal) {
+  if (!corPrincipal) return;
+
+  const texto = escolherTextoContraste(corPrincipal);
+  const hover = escurecerHex(corPrincipal, 0.12);
+
+  document.documentElement.style.setProperty("--cor-principal", corPrincipal);
+  document.documentElement.style.setProperty("--cor-principal-texto", texto);
+  document.documentElement.style.setProperty("--cor-principal-hover", hover);
+
+  // Navbar: alterna automaticamente navbar-dark/light
+  const nav = document.querySelector("nav.navbar");
+  if (nav) {
+    nav.style.backgroundColor = "var(--cor-principal)";
+    nav.classList.remove("bg-primary"); // evita conflito com bootstrap
+    nav.classList.toggle("navbar-dark", texto === "#FFFFFF");
+    nav.classList.toggle("navbar-light", texto === "#000000");
+  }
+}
+
 
 function aplicar_config() {
     // --- 0. Função Auxiliar de Conversão Robusta ---
@@ -250,10 +333,12 @@ function aplicar_config() {
         return id ? `https://drive.google.com/thumbnail?authuser=0&sz=w800&id=${id}` : url;
     };
 
-    // 1. Cor Principal
+ 
+    // 1. Cor Principal (com contraste automático)
     if (CONFIG_LOJA.CorPrincipal) {
-        document.documentElement.style.setProperty('--cor-principal', CONFIG_LOJA.CorPrincipal);
+        aplicarTemaAcessivel(CONFIG_LOJA.CorPrincipal);
     }
+
 
     // 2. Títulos e SEO
     var titulo = CONFIG_LOJA.TituloAba || CONFIG_LOJA.NomeDoSite;
@@ -358,7 +443,7 @@ function carregar_categorias(produtos) {
 function mostrar_produtos_por_categoria(cat) {
     var dados = (ALL_PRODUTOS && ALL_PRODUTOS.length)
         ? ALL_PRODUTOS
-        : (JSON.parse(localStorage.getItem('calçados')) || []);
+       : (lsGetJSON(STORAGE_KEY_PRODUTOS, []));
 
     var filtrados = dados.filter(p => p.Categoria === cat);
     mostrar_produtos(filtrados);
@@ -440,7 +525,7 @@ function carregar_produtos() {
     // 1. Tenta pegar o cache SOMENTE se puder usar storage
     let cache = [];
     if (podeUsarStorage()) {
-        cache = lsGetJSON('calçados', []);
+        cache = lsGetJSON(STORAGE_KEY_PRODUTOS, []);
     }
     
     if (cache && cache.length > 0) {
@@ -463,7 +548,7 @@ function carregar_produtos() {
             if (Array.isArray(data) && data.length > 0) {
                 // Tenta salvar no cache, mas se falhar não trava o site
                 if (podeUsarStorage()) {
-                    lsSetJSON("calçados", data);
+                    lsSetJSON(STORAGE_KEY_PRODUTOS, data);
                 }
                 ALL_PRODUTOS = data;
                 carregar_categorias(data);
@@ -479,6 +564,21 @@ function carregar_produtos() {
         });
 }
 
+function getColMobileClass() {
+  const n = parseInt(CONFIG_LOJA.ColunasMobile, 10);
+
+  // 1 coluna no mobile
+  if (n === 1) return "col-12";
+
+  // 2 colunas no mobile (padrão bootstrap)
+  if (n === 2) return "col-6";
+
+  // 3 colunas no mobile (opcional)
+  if (n === 3) return "col-4";
+
+  // fallback seguro
+  return "col-6";
+}
 
 function mostrar_skeleton(exibir) {
     const container = document.getElementById('loading_skeleton_container');
@@ -492,7 +592,7 @@ function mostrar_skeleton(exibir) {
         boxes.innerHTML = '';
         for (let i = 0; i < 4; i++) {
             boxes.innerHTML += `
-            <div class="${colClass} col-6"> 
+            <div class="${colClass} ${getColMobileClass()}">
                 <div class="card shadow-sm h-100 border-0">
                     <div class="card-img-top bg-secondary" style="height: 150px; opacity:0.1; animation: pulse 1.5s infinite;"></div>
                     <div class="card-body">
@@ -506,6 +606,21 @@ function mostrar_skeleton(exibir) {
         container.style.display = 'none';
     }
 }
+
+function ajustarImagemDrive(url, widthPx) {
+  if (!url || typeof url !== "string") return url;
+  if (!url.includes("drive.google.com")) return url;
+
+  // pega ID
+  const regex = /\/d\/([^\/]+)|id=([^\&]+)/;
+  const match = url.match(regex);
+  const id = match ? (match[1] || match[2]) : null;
+  if (!id) return url;
+
+  const w = Math.max(120, Math.min(Number(widthPx) || 400, 1600));
+  return `https://drive.google.com/thumbnail?authuser=0&sz=w${w}&id=${id}`;
+}
+
 
 function mostrar_produtos(produtos) {
     const container = document.getElementById('div_produtos');
@@ -523,18 +638,30 @@ function mostrar_produtos(produtos) {
     produtos.forEach(p => {
         var altText = p.Produto + " - " + p.Categoria;
         var infoExtra = (p.Tamanhos || p.Variacoes) ? `<small>Opções disponíveis</small>` : '';
+        const imgCard = ajustarImagemDrive(p.ImagemPrincipal, 500);
         const item = document.createElement('div');
-        item.className = `${colClass} col-6 mt-4`;
+        const colMobile = getColMobileClass();
+        item.className = `${colClass} ${colMobile} mt-4`;
+
 
         item.innerHTML = `
       <div class="card shadow-sm h-100">
           <div style="height: 250px; display: flex; align-items: center; justify-content: center; background: #fff;">
-             <img src="${p.ImagemPrincipal}" alt="${altText}" loading="lazy" style="max-height: 100%; max-width: 100%; object-fit: contain; padding: 10px;"/>
+             <img 
+                  src="${imgCard}" 
+                  alt="${altText}" 
+                  loading="lazy"
+                  decoding="async"
+                  width="600"
+                  height="600"
+                  style="max-height: 100%; max-width: 100%; object-fit: contain; padding: 10px;"
+                />
+
           </div>
           <div class="card-body d-flex flex-column">
               <p class="card-text">
                   <strong>${p.Produto}</strong><br/>
-                  <span class="text-primary fw-bold" style="font-size: 1.2rem;">R$ ${parseFloat(p.Preço).toFixed(2)}</span><br/>
+                  <span class="text-primary fw-bold" style="font-size: 1.2rem;">R$ ${moneyToFloat(p.Preço).toFixed(2)}</span><br/>
                   <small class="text-muted">${p.Categoria}</small><br/>
                   ${infoExtra}
               </p>
@@ -559,7 +686,7 @@ function limpar_filtros() {
     renderizarFiltrosAtributos(ALL_PRODUTOS);
 
     if (!ALL_PRODUTOS || !ALL_PRODUTOS.length) {
-        ALL_PRODUTOS = JSON.parse(localStorage.getItem('calçados')) || [];
+        ALL_PRODUTOS = lsGetJSON(STORAGE_KEY_PRODUTOS, []);
     }
     mostrar_produtos(ALL_PRODUTOS);
 }
@@ -630,7 +757,7 @@ function obterResumoDescricao(texto, maxChars) {
 function abrir_modal_ver(id) {
     var dados = (ALL_PRODUTOS && ALL_PRODUTOS.length)
         ? ALL_PRODUTOS
-        : (JSON.parse(localStorage.getItem('calçados')) || []);
+       : (lsGetJSON(STORAGE_KEY_PRODUTOS, []));
     produtoAtual = dados.find(p => String(p.ID) === String(id));
     if (!produtoAtual) {
         console.warn("Produto não encontrado para ID:", id, "IDs disponíveis:", dados.slice(0, 10).map(p => p.ID));
@@ -675,27 +802,36 @@ function abrir_modal_ver(id) {
         imgs = imgs.concat(produtoAtual.ImagensExtras.split(',').map(s => s.trim()));
     }
 
-    // 1) monta lista final limpa
-    const imgsLimpa = imgs
-        .map(s => String(s || "").trim())
-        .filter(s => s.length > 4);
+// 1) monta lista final limpa
+const imgsLimpa = imgs
+    .map(s => String(s || "").trim())
+    .filter(s => s.length > 4);
+
+// lista para o viewer (imagem maior, mas otimizada)
+const imgsViewer = imgsLimpa.map(s => ajustarImagemDrive(s, 1600));
+
 
     // 2) renderiza com a lista final (a mesma para todos)
-    imgsLimpa.forEach((src, idx) => {
-        var div = document.createElement('div');
-        div.className = (idx === 0) ? 'carousel-item active' : 'carousel-item';
+imgsLimpa.forEach((src, idx) => {
+  var div = document.createElement('div');
+  const srcAjustado = ajustarImagemDrive(src, 1200);
+  div.className = (idx === 0) ? 'carousel-item active' : 'carousel-item';
 
-        div.innerHTML = `
+  div.innerHTML = `
     <img
-      src="${src}"
+      src="${srcAjustado}"
       class="d-block w-100"
+      width="900"
+      height="300"
+      decoding="async"
       style="height: 300px; object-fit: contain; background: #f8f9fa; cursor: zoom-in;"
-      onclick='abrirViewerImagens(${JSON.stringify(imgsLimpa)}, ${idx}, "Galeria")'
+      onclick='abrirViewerImagens(${JSON.stringify(imgsViewer)}, ${idx}, "Galeria")'
     >
   `;
 
-        containerImagens.appendChild(div);
-    });
+  containerImagens.appendChild(div);
+});
+
 
 
     var divVar = document.getElementById('areaVariacoes');
@@ -720,7 +856,7 @@ function abrir_modal_ver(id) {
     var divMedidas = document.getElementById('areaTabelaMedidas');
     if (produtoAtual.TamanhosImagens && produtoAtual.TamanhosImagens.trim() !== "") {
         divMedidas.style.display = 'block';
-        document.getElementById('imgTabelaMedidas').src = produtoAtual.TamanhosImagens;
+        document.getElementById('imgTabelaMedidas').src = ajustarImagemDrive(produtoAtual.TamanhosImagens, 1200);
         // ✅ Viewer da Tabela de Medidas
         const btnTab = document.getElementById('btnTabelaMedidas');
         const imgTab = document.getElementById('imgTabelaMedidas');
@@ -730,7 +866,7 @@ function abrir_modal_ver(id) {
             if (imgTab) imgTab.classList.add('d-none');
 
             btnTab.onclick = function () {
-                abrirViewerImagens([produtoAtual.TamanhosImagens], 0, 'Tabela de Medidas');
+                abrirViewerImagens([ajustarImagemDrive(produtoAtual.TamanhosImagens, 1600)], 0, 'Tabela de Medidas');
                 return false;
             };
         }
@@ -895,23 +1031,33 @@ var freteSelecionadoNome = "";
 var enderecoEntregaTemp = {};
 
 function adicionar_carrinho(id, prod, preco, img, freteGratisUF, variacao) {
-    var c = JSON.parse(localStorage.getItem('carrinho')) || [];
-    var existe = c.find(i => i.id === id);
+var c = lsGetJSON('carrinho', []);
+var existe = c.find(i => i.id === id);
 
-    if (existe) {
-        existe.quantidade++;
-    } else {
-        c.push({
-            id: id,
-            producto: prod,
-            preco: preco,
-            imagem: img,
-            quantidade: 1,
-            freteGratisUF: freteGratisUF,
-            variacao: variacao
-        });
+if (existe) {
+    existe.quantidade++;
+
+    // ✅ BÔNUS (o que você perguntou): garante que o preço vira número
+    if (!Number.isFinite(existe.preco)) {
+        existe.preco = moneyToFloat(existe.preco);
     }
-    localStorage.setItem('carrinho', JSON.stringify(c));
+} else {
+    c.push({
+        id: id,
+        producto: prod,
+
+        // ✅ CRÍTICO: salva o preço já convertido (resolve vírgula "129,90")
+        preco: moneyToFloat(preco),
+
+        imagem: img,
+        quantidade: 1,
+        freteGratisUF: freteGratisUF,
+        variacao: variacao
+    });
+}
+
+lsSetJSON('carrinho', c);
+
     atualizar_carrinho();
 
     freteCalculado = 0;
@@ -922,7 +1068,7 @@ function adicionar_carrinho(id, prod, preco, img, freteGratisUF, variacao) {
 }
 
 function editar_item_carrinho(idComVariacao) {
-    var c = JSON.parse(localStorage.getItem('carrinho')) || [];
+    var c = lsGetJSON('carrinho', []);
     var item = c.find(i => i.id === idComVariacao);
 
     if (item) {
@@ -936,14 +1082,14 @@ function editar_item_carrinho(idComVariacao) {
 }
 
 function mudar_quantidade(id, delta) {
-    var c = JSON.parse(localStorage.getItem('carrinho')) || [];
+   var c = lsGetJSON('carrinho', []);
     var item = c.find(i => i.id === id);
     if (item) {
         item.quantidade += delta;
         if (item.quantidade <= 0) {
             c.splice(c.findIndex(i => i.id === id), 1);
         }
-        localStorage.setItem('carrinho', JSON.stringify(c));
+        lsSetJSON('carrinho', c);
         atualizar_carrinho();
         bloquearCheckout(true);
         document.getElementById('carrinho_opcoes_frete').innerHTML = "Quantidade mudou. Recalcule o frete.";
@@ -954,9 +1100,9 @@ function mudar_quantidade(id, delta) {
 }
 
 function remover_carrinho(id) {
-    var c = JSON.parse(localStorage.getItem('carrinho'));
+   var c = lsGetJSON('carrinho', []);
     c.splice(c.findIndex(i => i.id === id), 1);
-    localStorage.setItem('carrinho', JSON.stringify(c));
+    lsSetJSON('carrinho', c);
     atualizar_carrinho();
     bloquearCheckout(true);
     freteCalculado = 0;
@@ -965,7 +1111,7 @@ function remover_carrinho(id) {
 }
 
 function atualizar_carrinho() {
-    var c = JSON.parse(localStorage.getItem('carrinho')) || [];
+    var c = lsGetJSON('carrinho', []);
     var div = document.getElementById('div_carrito');
     div.innerHTML = '';
     var subtotal = 0;
@@ -991,11 +1137,19 @@ function atualizar_carrinho() {
 
         row.innerHTML = `
         <div class="d-flex align-items-center" style="width: 45%;">
-            <img src="${i.imagem}" style="width:50px; height:50px; object-fit:cover; margin-right:10px; border-radius:5px;">
+            <img 
+              src="${i.imagem}" 
+              width="50" 
+              height="50"
+              loading="lazy"
+              decoding="async"
+              style="width:50px; height:50px; object-fit:cover; margin-right:10px; border-radius:5px;"
+            >
+
             <div>
                 <div style="font-size:0.85rem; font-weight:bold; line-height: 1.2;">${i.producto}</div>
                 ${textoVariacao}
-                <div style="font-size:0.8rem; color:#666; margin-top:2px;">Unit: R$ ${parseFloat(i.preco).toFixed(2)}</div>
+                <div style="font-size:0.8rem; color:#666; margin-top:2px;">Unit: R$ ${moneyToFloat(i.preco).toFixed(2)}</div>
             </div>
         </div>
         
@@ -1006,7 +1160,7 @@ function atualizar_carrinho() {
         </div>
 
         <div class="text-end d-flex flex-column align-items-end" style="width: 25%;">
-             <div style="font-weight:bold; font-size: 0.9rem; margin-bottom: 5px;">R$ ${(i.preco * i.quantidade).toFixed(2)}</div>
+             <div style="font-weight:bold; font-size: 0.9rem; margin-bottom: 5px;">R$ ${(moneyToFloat(i.preco) * (parseInt(i.quantidade,10)||1)).toFixed(2)}</div>
              <div>
                 ${btnEditar}
                 <button class="btn btn-sm btn-outline-danger" onclick="remover_carrinho('${i.id}')" title="Excluir Item">
@@ -1015,7 +1169,7 @@ function atualizar_carrinho() {
              </div>
         </div>`;
         div.appendChild(row);
-        subtotal += i.preco * i.quantidade;
+        subtotal += (moneyToFloat(i.preco) * (parseInt(i.quantidade, 10) || 1));
     });
 
     document.getElementById('resumo_subtotal').innerText = 'R$ ' + subtotal.toFixed(2);
@@ -1051,7 +1205,7 @@ async function calcularFreteCarrinho() {
     var cep = document.getElementById('carrinho_cep').value.replace(/\D/g, '');
     if (cep.length !== 8) { alert("CEP inválido"); return; }
 
-    var carrinho = JSON.parse(localStorage.getItem('carrinho')) || [];
+    var carrinho = lsGetJSON('carrinho', []);
     if (carrinho.length === 0) return;
 
     var divOpcoes = document.getElementById('carrinho_opcoes_frete');
@@ -1072,7 +1226,7 @@ async function calcularFreteCarrinho() {
         console.warn("Falha ao buscar UF no ViaCEP", e);
     }
 
-    var todosProdutos = JSON.parse(localStorage.getItem('calçados')) || [];
+   var todosProdutos = lsGetJSON(STORAGE_KEY_PRODUTOS, []);
     var pesoTotal = 0;
     var volumeTotal = 0;
 
@@ -1211,7 +1365,7 @@ async function calcularFreteCarrinho() {
 function selecionarFrete(input) {
     freteCalculado = moneyToFloat(input.value);
     freteSelecionadoNome = input.getAttribute('data-nome');
-    var c = JSON.parse(localStorage.getItem('carrinho')) || [];
+    var c = lsGetJSON('carrinho', []);
     var subtotal = c.reduce((acc, i) => acc + (i.preco * i.quantidade), 0);
     atualizarTotalFinal(subtotal);
     bloquearCheckout(false);
@@ -1232,23 +1386,23 @@ function bloquearCheckout(bloquear) {
 }
 
 function salvarFreteCache(cep, nome, valor) {
-    try {
-        localStorage.setItem("frete_cache", JSON.stringify({
-            cep: String(cep || "").replace(/\D/g, ""),
-            nome: String(nome || ""),
-            valor: Number(valor) || 0,
-            ts: Date.now()
-        }));
-    } catch (e) { }
+    lsSetJSON("frete_cache", {
+        cep: String(cep || "").replace(/\D/g, ""),
+        nome: String(nome || ""),
+        valor: Number(valor) || 0,
+        ts: Date.now()
+    });
 }
 
+
 function limparFreteCache() {
-    try { localStorage.removeItem("frete_cache"); } catch (e) { }
+    lsRemove("frete_cache");
 }
 
 function lerFreteCache() {
-    try { return JSON.parse(localStorage.getItem("frete_cache")); } catch (e) { return null; }
+    return lsGetJSON("frete_cache", null);
 }
+
 
 
 // --- 7. CHECKOUT FINAL ---
@@ -1268,47 +1422,7 @@ function irParaCheckout() {
     new bootstrap.Modal(document.getElementById('modalCheckout')).show();
 }
 
-// --- NOVO: BUSCA AUTOMÁTICA DE CLIENTE POR CPF ---
-$(document).on('blur', '#checkout_cpf', function () {
-    var cpf = $(this).val().replace(/\D/g, '');
-    if (cpf.length === 11) {
-        fetch(CONFIG.SCRIPT_URL, {
-            method: 'POST',
-            body: JSON.stringify({ op: "buscar_cliente", cpf: cpf })
-        })
-            .then(r => r.json())
-            .then(dados => {
-                if (dados.encontrado) {
-                    dadosClienteTemp.nome = dados.nome || "";
-                    dadosClienteTemp.sobrenome = dados.sobrenome || "";
 
-                    enderecoEntregaTemp.cep = dados.cep; // <-- ADICIONADO AQUI para a segurança funcionar
-                    // Exibe o aviso bonito em vez do confirm do navegador
-                    $("#aviso_cpf_encontrado").fadeIn();
-
-                    // Configura o botão para preencher os dados se o usuário aceitar
-                    document.getElementById('btn_usar_dados_antigos').onclick = function () {
-                        document.getElementById('checkout_telefone').value = dados.telefone || "";
-                        document.getElementById('checkout_rua').value = dados.rua || "";
-                        document.getElementById('checkout_numero').value = dados.numero || "";
-                        document.getElementById('checkout_bairro').value = dados.bairro || "";
-                        document.getElementById('checkout_cidade').value = dados.cidade || "";
-                        document.getElementById('checkout_uf').value = dados.uf || dados.estado || "";
-                 
-                        document.getElementById('checkout_complemento').value = dados.complemento || "";
-                        document.getElementById('checkout_referencia').value = dados.referencia || "";
-
-
-                        // Validação Crítica de CEP
-                        if (dados.cep && dados.cep.replace(/\D/g, '') !== document.getElementById('carrinho_cep').value.replace(/\D/g, '')) {
-                            alert("Atenção: O endereço cadastrado tem um CEP diferente do usado no cálculo do frete. Por favor, verifique se deseja manter o endereço ou recalcular o frete.");
-                        }
-                        $("#aviso_cpf_encontrado").fadeOut();
-                    };
-                }
-            });
-    }
-});
 
 function iniciarPagamentoFinal(ev) {
     if (!validarCepCheckoutComFrete()) return;
@@ -1370,7 +1484,7 @@ function iniciarPagamentoFinal(ev) {
     }
 
 
-    var carrinho = JSON.parse(localStorage.getItem('carrinho')) || [];
+    var carrinho = lsGetJSON('carrinho', []);
     var items = carrinho.map(i => {
         var tituloCompleto = i.producto;
         if (i.variacao && i.variacao !== "Único") tituloCompleto += " - " + i.variacao;
@@ -1416,106 +1530,6 @@ function iniciarPagamentoFinal(ev) {
 
 }
 
-
-// --- 8. INICIALIZAÇÃO ---
-document.addEventListener("DOMContentLoaded", function () {
-    carregar_config();
-    atualizar_carrinho();
-
-    // ✅ BUSCA: filtra enquanto digita + Enter
-    const busca = document.getElementById('txt_search');
-    if (busca) {
-        busca.addEventListener('input', filtrarProdutos);
-
-        busca.addEventListener('search', () => filtrarProdutos()); // ✅ ADICIONAR
-
-        busca.addEventListener('keydown', (e) => {
-            if (e.key === "Enter") {
-                e.preventDefault();
-                filtrarProdutos();
-            }
-            // ✅ Quando abrir/fechar o offcanvas de filtros, esconde/mostra carrinho flutuante
-            const offEl = document.getElementById('offcanvasFiltros');
-            if (offEl) {
-                offEl.addEventListener('show.bs.offcanvas', () => {
-                    document.body.classList.add('filtros-abertos');
-                });
-
-                offEl.addEventListener('hidden.bs.offcanvas', () => {
-                    document.body.classList.remove('filtros-abertos');
-                });
-            }
-
-
-        });
-    }
-
-
-    // ✅ BUSCA MOBILE: filtra enquanto digita e quando limpa no "X"
-    const buscaMob = document.getElementById('txt_search_mobile');
-    if (buscaMob) {
-        buscaMob.addEventListener('input', filtrarProdutos);
-
-        // evento "search" dispara no mobile ao apertar "Pesquisar" ou ao limpar no X do input type=search
-        buscaMob.addEventListener('search', () => filtrarProdutos());
-
-        buscaMob.addEventListener('keydown', (e) => {
-            if (e.key === "Enter") {
-                e.preventDefault();
-                filtrarProdutos();
-            }
-        });
-    }
-
-
-    // ✅ BUSCA: garante que lupinha e teclado do celular executem a busca
-    const formBusca = document.getElementById('form_busca');
-    if (formBusca) {
-        formBusca.addEventListener('submit', (e) => {
-            e.preventDefault();
-            filtrarProdutos();
-            // opcional: fecha menu mobile após buscar
-            fechar_menu_mobile();
-        });
-    }
-
-
-
-    sincronizarBuscaEntreCampos();
-
-    // submit do form mobile
-    const formBuscaMob = document.getElementById('form_busca_mobile');
-    if (formBuscaMob) {
-        formBuscaMob.addEventListener('submit', (e) => {
-            e.preventDefault();
-            filtrarProdutos();
-        });
-    }
-
-
-
-    const modais = [
-        'modalProduto',
-        'modalCarrito',
-        'modalCheckout',
-        'modalLogin',
-        'modalUsuario',
-        'modalIdentificacao',
-        'modalConfirmacaoPedido'
-    ];
-
-    const btnFloat = document.getElementById('btn_carrinho_flutuante');
-
-    modais.forEach(id => {
-        var el = document.getElementById(id);
-        if (el) {
-            el.addEventListener('show.bs.modal', () => { if (btnFloat) btnFloat.style.display = 'none'; });
-            el.addEventListener('hidden.bs.modal', () => {
-                if (!document.querySelector('.modal.show') && btnFloat) btnFloat.style.display = 'block';
-            });
-        }
-    });
-});
 
 
 // Monitora se o usuário está tentando mudar o CEP no meio do caminho
@@ -1692,6 +1706,8 @@ function voltarParaCpf() {
 function exibirDadosEncontrados(dados, cpf) {
     // 1. Preenche as variáveis globais que o checkout usa
     enderecoEntregaTemp = dados;
+    enderecoEntregaTemp.referencia =
+      String(dados.referencia || dados.Referencia || dados["Referência"] || "").trim();
     enderecoEntregaTemp.cpf = cpf;
     
     dadosClienteTemp.nome = String(dados.nome || "").trim();
@@ -1721,7 +1737,7 @@ function exibirDadosEncontrados(dados, cpf) {
         <div class="bg-light p-3 rounded border mb-3">
             <div class="fw-bold">${dadosClienteTemp.nome} ${dadosClienteTemp.sobrenome}</div>
             <div class="small text-muted">
-                ${dados.rua}, ${dados.numero} ${dados.complemento ? '- ' + dados.complemento : ''}<br>
+                ${dados.rua}, ${dados.numero} ${dados.complemento ? '- ' + dados.complemento : ''}${(dados.referencia || dados.Referencia || dados["Referência"]) ? ' - Ref: ' + (dados.referencia || dados.Referencia || dados["Referência"]) : ''}<br>
                 ${dados.bairro} - ${dados.cidade}/${dados.uf}<br>
                 CEP: ${dados.cep}
             </div>
@@ -1768,7 +1784,9 @@ function mascaraCpf(i){
 $(document).on('change', '#check_lgpd', function () {
     const ok = this.checked;
     $('#btn_buscar_identidade').prop('disabled', !ok);
+    $('#btn_buscar_identidade_div button').prop('disabled', !ok);
 });
+
 
 
 // 3. Função para buscar CEP dentro da tela de pagamento
@@ -1783,7 +1801,8 @@ function buscarCepNoCheckout() {
                 document.getElementById('checkout_rua').value = d.logradouro;
                 document.getElementById('checkout_bairro').value = d.bairro;
                 document.getElementById('checkout_cidade').value = d.localidade;
-                document.getElementById('checkout_uf').value = enderecoEntregaTemp.estado || enderecoEntregaTemp.uf || "";
+                document.getElementById('checkout_uf').value = d.uf || "";
+
 
                 enderecoEntregaTemp.cep = cep; // Atualiza para validação de frete
                 validarCepsIdenticos();
@@ -1821,7 +1840,8 @@ function confirmarDadosExistentes(acao) {
   document.getElementById('checkout_complemento').value = S(enderecoEntregaTemp.complemento);
   
   // ✅ CORREÇÃO: Mapeamento direto sem heurística
-  document.getElementById('checkout_referencia').value  = S(enderecoEntregaTemp.referencia); 
+  document.getElementById('checkout_referencia').value =
+  S(enderecoEntregaTemp.referencia || enderecoEntregaTemp.Referencia || enderecoEntregaTemp["Referência"]);
   document.getElementById('checkout_bairro').value      = S(enderecoEntregaTemp.bairro);
   document.getElementById('checkout_cidade').value      = S(enderecoEntregaTemp.cidade);
   
@@ -1862,18 +1882,12 @@ function confirmarDadosExistentes(acao) {
 $(document).ready(function () {
     // Garante que o botão flutuante reapareça ao fechar qualquer modal se houver itens
     $('.modal').on('hidden.bs.modal', function () {
-        var c = JSON.parse(localStorage.getItem('carrinho')) || [];
+        var c = lsGetJSON('carrinho', []);
         if (c.length > 0) {
             $('#btn_carrinho_flutuante').fadeIn();
         }
     });
 });
-
-$(document).on('change', '#check_lgpd', function () {
-    const ok = this.checked;
-    $('#btn_buscar_identidade_div button').prop('disabled', !ok);
-});
-
 
 
 
@@ -1900,7 +1914,7 @@ function formatBRL(v) {
 
 function abrirConfirmacaoPedido(cliente, items, logisticaInfo) {
     // Preenche o modal (você precisa ter os IDs do modalConfirmacaoPedido)
-    const carrinho = JSON.parse(localStorage.getItem('carrinho')) || [];
+    const carrinho = lsGetJSON('carrinho', []);
     const subtotal = carrinho.reduce((acc, i) => acc + ((Number(i.preco) || 0) * (Number(i.quantidade) || 1)), 0);
     const frete = Number(freteCalculado) || 0;
     const total = subtotal + frete;
@@ -1914,9 +1928,15 @@ function abrirConfirmacaoPedido(cliente, items, logisticaInfo) {
 
     if (destEl) destEl.innerText = `${cliente.nome} ${cliente.sobrenome} • CPF: ${cliente.cpf}`;
 
-    const linha1 = `${cliente.rua}, ${cliente.numero}${cliente.complemento ? " - " + cliente.complemento : ""}`;
-    const linha2 = `${cliente.bairro} - ${cliente.cidade}/${cliente.uf} • CEP: ${cliente.cep}`;
-    if (endEl) endEl.innerText = `${linha1}\n${linha2}`;
+const linha1 = `${cliente.rua}, ${cliente.numero}${cliente.complemento ? " - " + cliente.complemento : ""}`;
+const linha2 = `${cliente.bairro} - ${cliente.cidade}/${cliente.uf} • CEP: ${cliente.cep}`;
+
+// ✅ NOVO: Referência no resumo da entrega
+const ref = String(cliente.referencia || "").trim();
+const linha3 = ref ? `Referência: ${ref}` : "";
+
+if (endEl) endEl.innerText = [linha1, linha2, linha3].filter(Boolean).join("\n");
+
 
     const itensSomenteProdutos = items.filter(it => !(String(it.title || "").toLowerCase().includes("frete")));
     const htmlItens = itensSomenteProdutos
@@ -1937,7 +1957,7 @@ function abrirConfirmacaoPedido(cliente, items, logisticaInfo) {
     new bootstrap.Modal(document.getElementById('modalConfirmacaoPedido')).show();
 }
 
-function efetivarPagamentoFinal() {
+async function efetivarPagamentoFinal() {
     const pend = window.__pedidoPendente;
     if (!pend) {
         alert("Pedido pendente não encontrado. Tente novamente.");
@@ -1964,6 +1984,9 @@ function efetivarPagamentoFinal() {
         texto += `*Endereço:* ${cliente.rua}, ${cliente.numero}\n`;
         texto += `*Bairro:* ${cliente.bairro} - ${cliente.cidade}/${cliente.uf}\n`;
         if(cliente.complemento) texto += `*Comp:* ${cliente.complemento}\n`;
+        if (cliente.referencia && String(cliente.referencia).trim()) {
+          texto += `*Referência:* ${String(cliente.referencia).trim()}\n`;
+        }
         texto += `\n*--- Itens ---*\n`;
         
         let subtotalProdutos = 0;
@@ -1988,6 +2011,47 @@ function efetivarPagamentoFinal() {
         if (btn) {
             btn.innerText = "Pedido Enviado!";
         }
+
+// ✅ 1) REGISTRAR NA PLANILHA (VENDAS) MESMO SENDO WHATSAPP
+try {
+  await fetch(CONFIG.SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+      op: "registrar_pedido_whatsapp",
+      cliente,
+      items,
+      logistica: logisticaInfo,
+      canal: "whatsapp",
+      frete_nome: freteSelecionadoNome || "",
+      frete_valor: Number(freteCalculado) || 0
+    })
+  }).then(r => r.json()).then(resp => {
+    // opcional: guardar ID retornado pelo back
+    if (resp && resp.idPedido) {
+      console.log("Pedido WhatsApp registrado:", resp.idPedido);
+    }
+  });
+} catch (e) {
+  console.warn("Falha ao registrar pedido WhatsApp (seguindo mesmo assim):", e);
+}
+
+// ✅ 2) LIMPAR CARRINHO APÓS ENVIAR PRO WHATSAPP
+lsRemove("carrinho");
+atualizar_carrinho();
+
+freteCalculado = 0;
+freteSelecionadoNome = "";
+limparFreteCache();
+bloquearCheckout(true);
+
+const divOp = document.getElementById("carrinho_opcoes_frete");
+if (divOp) divOp.innerHTML = "";
+
+// (opcional) fechar modal do carrinho/checkout se estiver aberto
+try {
+  bootstrap.Modal.getInstance(document.getElementById('modalCheckout'))?.hide();
+} catch(e){}
+
         
         // Abre o WhatsApp
         window.open(linkWa, '_blank');
@@ -2000,26 +2064,35 @@ function efetivarPagamentoFinal() {
     }
 
     // --- Fluxo Original Mercado Pago (Mantido) ---
-    fetch(CONFIG.SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify({ cliente, items, logistica: logisticaInfo })
+// --- Fluxo Original Mercado Pago (Mantido) ---
+fetch(CONFIG.SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+        cliente,
+        items,
+        logistica: logisticaInfo,
+
+        // ✅ NOVO: para o backend saber pra onde voltar
+        return_to: window.location.href
     })
-    .then(r => r.text())
-    .then(link => { 
-        if(link.includes("http")) {
-            window.location.href = link; 
-        } else {
-            alert("Erro ao gerar link de pagamento: " + link);
-            if(btn) { btn.innerText = "Tentar Novamente"; btn.disabled = false; }
-        }
-    })
-    .catch(e => {
-        alert("Erro ao processar.");
-        if (btn) {
-            btn.innerText = "Tentar Novamente";
-            btn.disabled = false;
-        }
-    });
+})
+.then(r => r.text())
+.then(link => { 
+    if(link.includes("http")) {
+        window.location.href = link; 
+    } else {
+        alert("Erro ao gerar link de pagamento: " + link);
+        if(btn) { btn.innerText = "Tentar Novamente"; btn.disabled = false; }
+    }
+})
+.catch(e => {
+    alert("Erro ao processar.");
+    if (btn) {
+        btn.innerText = "Tentar Novamente";
+        btn.disabled = false;
+    }
+});
+
 }
 
 // --- LÓGICA DE LOGIN E MEUS PEDIDOS ---
@@ -2029,11 +2102,11 @@ const TEMPO_SESSAO_MS = 10 * 60 * 1000;
 
 function salvarSessao(cpf) {
     const dados = { cpf: cpf, validade: Date.now() + TEMPO_SESSAO_MS };
-    localStorage.setItem("sessao_cliente", JSON.stringify(dados));
+    lsSetJSON("sessao_cliente", dados);
 }
 
 function verificarSessaoAtiva() {
-    const sessao = JSON.parse(localStorage.getItem("sessao_cliente"));
+    const sessao = lsGetJSON("sessao_cliente", null);
     if (sessao && sessao.cpf && Date.now() < sessao.validade) {
         // Renova a sessão por mais 10 min a cada acesso
         salvarSessao(sessao.cpf);
@@ -2043,7 +2116,7 @@ function verificarSessaoAtiva() {
 }
 
 function logoutSessao() {
-    localStorage.removeItem("sessao_cliente");
+    lsRemove("sessao_cliente");
     location.reload();
 }
 
@@ -2284,23 +2357,13 @@ document.addEventListener("DOMContentLoaded", function () {
         busca.addEventListener('input', filtrarProdutos);
         busca.addEventListener('search', () => filtrarProdutos()); 
 
-        busca.addEventListener('keydown', (e) => {
-            if (e.key === "Enter") {
-                e.preventDefault();
-                filtrarProdutos();
-            }
-            // ✅ Quando abrir/fechar o offcanvas de filtros, esconde/mostra carrinho flutuante
-            const offEl = document.getElementById('offcanvasFiltros');
-            if (offEl) {
-                offEl.addEventListener('show.bs.offcanvas', () => {
-                    document.body.classList.add('filtros-abertos');
-                });
+busca.addEventListener('keydown', (e) => {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        filtrarProdutos();
+    }
+});
 
-                offEl.addEventListener('hidden.bs.offcanvas', () => {
-                    document.body.classList.remove('filtros-abertos');
-                });
-            }
-        });
     }
 
     // ✅ BUSCA MOBILE
@@ -2328,6 +2391,19 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     sincronizarBuscaEntreCampos();
+
+    // ✅ Offcanvas de filtros: registra UMA vez (evita duplicar a cada tecla)
+const offEl = document.getElementById('offcanvasFiltros');
+if (offEl) {
+    offEl.addEventListener('show.bs.offcanvas', () => {
+        document.body.classList.add('filtros-abertos');
+    });
+
+    offEl.addEventListener('hidden.bs.offcanvas', () => {
+        document.body.classList.remove('filtros-abertos');
+    });
+}
+
 
     // submit do form mobile
     const formBuscaMob = document.getElementById('form_busca_mobile');
