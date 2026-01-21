@@ -1,4 +1,79 @@
-// js/app.js - Versão com Frete Real (Soma Pesos), Edição e Máscara CEP
+// --- CONTROLE DE VERSÃO E CACHE (MODO SEGURO) ---
+const VERSAO_SISTEMA = "2026-01-20_v5"; 
+
+// --- NOVO MODO DE SEGURANÇA MÁXIMA ---
+function podeUsarStorage() {
+    try {
+        // Verifica se a propriedade existe e se não é bloqueada
+        if (typeof localStorage === 'undefined' || localStorage === null) return false;
+        localStorage.setItem('teste_storage', '1');
+        localStorage.removeItem('teste_storage');
+        return true;
+    } catch (e) {
+        // Se cair aqui, o Tracking Prevention bloqueou
+        console.warn("Acesso ao Storage bloqueado pelo navegador.");
+        return false;
+    }
+}
+
+// Substitua seu bloco de limpeza de cache por este:
+try {
+    if (podeUsarStorage()) {
+        if (localStorage.getItem("versao_cache") !== VERSAO_SISTEMA) {
+            localStorage.clear();
+            localStorage.setItem("versao_cache", VERSAO_SISTEMA);
+        }
+    }
+} catch (e) { }
+
+
+//----
+
+// --- STORAGE SAFE HELPERS (blindagem total p/ Edge Tracking Prevention) ---
+function lsGetRaw(key) {
+  try {
+    if (!podeUsarStorage()) return null;
+    return localStorage.getItem(key);
+  } catch (e) {
+    return null;
+  }
+}
+
+function lsSetRaw(key, val) {
+  try {
+    if (!podeUsarStorage()) return false;
+    localStorage.setItem(key, val);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function lsRemove(key) {
+  try {
+    if (!podeUsarStorage()) return;
+    localStorage.removeItem(key);
+  } catch (e) {}
+}
+
+function lsGetJSON(key, fallback) {
+  const raw = lsGetRaw(key);
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    return fallback;
+  }
+}
+
+function lsSetJSON(key, obj) {
+  try {
+    return lsSetRaw(key, JSON.stringify(obj));
+  } catch (e) {
+    return false;
+  }
+}
+
 
 
 // Variável global para guardar as configurações da planilha
@@ -65,9 +140,9 @@ function normalizarTexto(s) {
 function filtrarProdutos() {
     const termo = normalizarTexto(obterTermoBusca());
 
-    if (!Array.isArray(ALL_PRODUTOS) || ALL_PRODUTOS.length === 0) {
-        ALL_PRODUTOS = JSON.parse(localStorage.getItem('calçados')) || [];
-    }
+if (!Array.isArray(ALL_PRODUTOS) || ALL_PRODUTOS.length === 0) {
+    ALL_PRODUTOS = lsGetJSON('calçados', []);
+}
 
     const filtrados = ALL_PRODUTOS.filter(p => {
         const nome = normalizarTexto(p.Produto);
@@ -126,14 +201,15 @@ function mascaraCep(t) {
 function carregar_config() {
     var url = CONFIG.SCRIPT_URL + "?rota=config&nocache=" + new Date().getTime();
 
-    // Primeiro: Tenta carregar do Cache para ser instantâneo
-    var configCache = JSON.parse(localStorage.getItem('loja_config'));
-    if (configCache) {
-        CONFIG_LOJA = configCache;
-        aplicar_config();
+    // Tenta carregar do Cache APENAS se o storage estiver liberado
+    if (podeUsarStorage()) {
+        var configCache = JSON.parse(localStorage.getItem('loja_config'));
+        if (configCache) {
+            CONFIG_LOJA = configCache;
+            aplicar_config();
+        }
     }
 
-    // Segundo: Busca na planilha e ATUALIZA o cache e a tela
     fetch(url)
         .then(res => res.json())
         .then(data => {
@@ -143,23 +219,43 @@ function carregar_config() {
                 data.forEach(l => { if (l.Chave && l.Valor) config[l.Chave] = l.Valor; });
             } else { config = data; }
 
-            localStorage.setItem("loja_config", JSON.stringify(config));
+            // Salva no cache apenas se permitido
+            if (podeUsarStorage()) {
+                localStorage.setItem("loja_config", JSON.stringify(config));
+            }
+            
             CONFIG_LOJA = config;
             aplicar_config();
-
-            // DISPARO OBRIGATÓRIO: Carrega os produtos após ter a configuração
             carregar_produtos();
         })
-        .catch(e => {
-            console.log("Erro config", e);
-            // Se a internet falhar, tenta carregar produtos mesmo assim
-            carregar_produtos();
+            .catch(e => {
+            console.log("Erro ao carregar config, chamando produtos assim mesmo:", e);
+            carregar_produtos(); // CHAMADA DE EMERGÊNCIA: Garante que os produtos carreguem mesmo se a config falhar
         });
 }
 
 function aplicar_config() {
-    if (CONFIG_LOJA.CorPrincipal) document.documentElement.style.setProperty('--cor-principal', CONFIG_LOJA.CorPrincipal);
+    // --- 0. Função Auxiliar de Conversão Robusta ---
+    const obterLinkDiretoDrive = (url) => {
+        if (!url || typeof url !== 'string' || url.trim() === "") return "";
+        if (!url.includes('drive.google.com')) return url;
+        
+        // Extrai o ID do arquivo (funciona com link de compartilhamento, view, preview ou uc)
+        const regex = /\/d\/([^\/]+)|id=([^\&]+)/;
+        const match = url.match(regex);
+        const id = match ? (match[1] || match[2]) : null;
+        
+        // Retorna o link de visualização direta (Thumbnail de alta qualidade)
+        // Isso resolve o problema da logo parar de aparecer
+        return id ? `https://drive.google.com/thumbnail?authuser=0&sz=w800&id=${id}` : url;
+    };
 
+    // 1. Cor Principal
+    if (CONFIG_LOJA.CorPrincipal) {
+        document.documentElement.style.setProperty('--cor-principal', CONFIG_LOJA.CorPrincipal);
+    }
+
+    // 2. Títulos e SEO
     var titulo = CONFIG_LOJA.TituloAba || CONFIG_LOJA.NomeDoSite;
     if (titulo) {
         document.title = titulo;
@@ -172,14 +268,73 @@ function aplicar_config() {
         if (metaDesc) metaDesc.setAttribute("content", CONFIG_LOJA.DescricaoSEO);
     }
 
+    // 3. Logo do Site (Restaurado e Melhorado)
     var logo = document.getElementById('logo_site');
     if (logo) {
         if (CONFIG_LOJA.LogoDoSite && CONFIG_LOJA.LogoDoSite.trim() !== "") {
-            var src = CONFIG_LOJA.LogoDoSite.replace('/view', '/preview');
-            logo.innerHTML = `<img src="${src}" alt="${CONFIG_LOJA.NomeDoSite}" style="max-height:40px; margin-right:10px;">`;
-        } else if (CONFIG_LOJA.NomeDoSite) { logo.innerText = CONFIG_LOJA.NomeDoSite; }
+            var src = obterLinkDiretoDrive(CONFIG_LOJA.LogoDoSite);
+            logo.innerHTML = `<img src="${src}" alt="${CONFIG_LOJA.NomeDoSite}" style="max-height:40px; margin-right:10px; width: auto; display: inline-block;">`;
+        } else if (CONFIG_LOJA.NomeDoSite) { 
+            logo.innerText = CONFIG_LOJA.NomeDoSite; 
+        }
     }
-}
+
+    // 4. Favicon Dinâmico
+    if (CONFIG_LOJA.Favicon) {
+        let link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+        link.type = 'image/x-icon';
+        link.rel = 'shortcut icon';
+        link.href = obterLinkDiretoDrive(CONFIG_LOJA.Favicon);
+        document.getElementsByTagName('head')[0].appendChild(link);
+    }
+
+// 5. Botão de WhatsApp Flutuante (Esquerda e Protegido contra erros)
+    // Primeiro, verificamos se o botão já existe na tela
+    const btnExistente = document.getElementById('wa_flutuante');
+
+    if (CONFIG_LOJA.WhatsappFlutuante === "Sim" && CONFIG_LOJA.NumeroWhatsapp) {
+        // Se a config é SIM e o botão ainda NÃO existe, nós criamos ele
+        if (!btnExistente) {
+            const waBtn = document.createElement('a');
+            waBtn.id = 'wa_flutuante';
+            
+            const foneRaw = String(CONFIG_LOJA.NumeroWhatsapp || "");
+            const foneLimpo = foneRaw.replace(/\D/g, '');
+            
+            waBtn.href = `https://wa.me/${foneLimpo}`;
+            waBtn.target = "_blank";
+            waBtn.innerHTML = '<i class="bi bi-whatsapp"></i>';
+            
+            waBtn.style.cssText = `
+                position: fixed;
+                width: 50px;
+                height: 50px;
+                bottom: 20px;
+                left: 20px;
+                background-color: #25d366;
+                color: #FFF;
+                border-radius: 50px;
+                text-align: center;
+                font-size: 26px;
+                box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
+                z-index: 9999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-decoration: none;
+            `;
+            
+            document.body.appendChild(waBtn);
+        }
+    } else {
+        // ✅ ESTA É A PARTE NOVA:
+        // Se na planilha estiver "Não", ou se o número estiver vazio,
+        // e o botão existir na tela, nós removemos ele.
+        if (btnExistente) {
+            btnExistente.remove();
+        }
+    }
+} // Fechamento da função aplicar_config
 
 // --- 2. MENU E CATEGORIAS ---
 function carregar_categorias(produtos) {
@@ -282,35 +437,45 @@ function atualizarBadgeFiltros() {
 
 // --- 3. PRODUTOS E LOADING ---
 function carregar_produtos() {
-    const cache = JSON.parse(localStorage.getItem('calçados')) || [];
-    if (cache && cache.length) {
-        // mostra cache imediatamente
+    // 1. Tenta pegar o cache SOMENTE se puder usar storage
+    let cache = [];
+    if (podeUsarStorage()) {
+        cache = lsGetJSON('calçados', []);
+    }
+    
+    if (cache && cache.length > 0) {
         ALL_PRODUTOS = cache;
         carregar_categorias(cache);
         renderizarFiltrosAtributos(cache);
         mostrar_produtos(cache);
         mostrar_skeleton(false);
     } else {
+        // Se não tem cache ou storage bloqueado, mostra o loading e vai pra rede
         mostrar_skeleton(true);
     }
 
-    // atualiza em segundo plano
     var url = CONFIG.SCRIPT_URL + "?rota=produtos&nocache=" + new Date().getTime();
+    
     fetch(url)
         .then(r => r.json())
         .then(data => {
             mostrar_skeleton(false);
-            if (Array.isArray(data)) {
-                localStorage.setItem("calçados", JSON.stringify(data));
+            if (Array.isArray(data) && data.length > 0) {
+                // Tenta salvar no cache, mas se falhar não trava o site
+                if (podeUsarStorage()) {
+                    lsSetJSON("calçados", data);
+                }
                 ALL_PRODUTOS = data;
                 carregar_categorias(data);
                 renderizarFiltrosAtributos(data);
                 mostrar_produtos(data);
             }
         })
-        .catch(() => {
+        .catch(err => {
             mostrar_skeleton(false);
-            // se falhar, fica com o cache mesmo
+            console.error("Erro na Planilha:", err);
+            // Se der erro de rede, tenta mostrar o que tem na memória pelo menos
+            if(ALL_PRODUTOS.length > 0) mostrar_produtos(ALL_PRODUTOS);
         });
 }
 
@@ -1789,20 +1954,72 @@ function efetivarPagamentoFinal() {
         btn.disabled = true;
     }
 
+    // ✅ CORREÇÃO PARA CHECKOUT WHATSAPP
+        const tipo = String(CONFIG_LOJA.TipoCheckout || "").toLowerCase().trim();
+        if (tipo === "whatsapp") {
 
+        let texto = `*Novo Pedido - ${CONFIG_LOJA.NomeDoSite || "Loja"}*\n\n`;
+        texto += `*Cliente:* ${cliente.nome} ${cliente.sobrenome}\n`;
+        texto += `*Telefone:* ${cliente.telefone}\n`; // Corrigido de .whatsapp para .telefone
+        texto += `*Endereço:* ${cliente.rua}, ${cliente.numero}\n`;
+        texto += `*Bairro:* ${cliente.bairro} - ${cliente.cidade}/${cliente.uf}\n`;
+        if(cliente.complemento) texto += `*Comp:* ${cliente.complemento}\n`;
+        texto += `\n*--- Itens ---*\n`;
+        
+        let subtotalProdutos = 0;
+        items.forEach(it => {
+            // Ignora a linha de frete que o sistema injeta no array para o Mercado Pago
+            if (!it.title.toLowerCase().includes("frete")) {
+                texto += `✅ ${it.quantity}x ${it.title} (${formatBRL(it.unit_price)})\n`;
+                subtotalProdutos += (it.unit_price * it.quantity);
+            }
+        });
+
+        const valorDoFrete = Number(freteCalculado) || 0;
+        const totalGeral = subtotalProdutos + valorDoFrete;
+
+        texto += `\n*Subtotal:* ${formatBRL(subtotalProdutos)}`;
+        texto += `\n*Frete (${freteSelecionadoNome}):* ${formatBRL(valorDoFrete)}`;
+        texto += `\n*TOTAL FINAL: ${formatBRL(totalGeral)}*`;
+
+        const numeroDestino = String(CONFIG_LOJA.NumeroWhatsapp || "").replace(/\D/g, '');
+        const linkWa = `https://wa.me/${numeroDestino}?text=${encodeURIComponent(texto)}`;
+        
+        if (btn) {
+            btn.innerText = "Pedido Enviado!";
+        }
+        
+        // Abre o WhatsApp
+        window.open(linkWa, '_blank');
+        
+        // Opcional: Limpar carrinho após enviar para o WhatsApp
+        // localStorage.removeItem('carrinho');
+        // atualizar_carrinho();
+        
+        return; 
+    }
+
+    // --- Fluxo Original Mercado Pago (Mantido) ---
     fetch(CONFIG.SCRIPT_URL, {
         method: 'POST',
         body: JSON.stringify({ cliente, items, logistica: logisticaInfo })
     })
-        .then(r => r.text())
-        .then(link => { window.location.href = link; })
-        .catch(e => {
-            alert("Erro ao processar.");
-            if (btn) {
-                btn.innerText = "Tentar Novamente";
-                btn.disabled = false;
-            }
-        });
+    .then(r => r.text())
+    .then(link => { 
+        if(link.includes("http")) {
+            window.location.href = link; 
+        } else {
+            alert("Erro ao gerar link de pagamento: " + link);
+            if(btn) { btn.innerText = "Tentar Novamente"; btn.disabled = false; }
+        }
+    })
+    .catch(e => {
+        alert("Erro ao processar.");
+        if (btn) {
+            btn.innerText = "Tentar Novamente";
+            btn.disabled = false;
+        }
+    });
 }
 
 // --- LÓGICA DE LOGIN E MEUS PEDIDOS ---
