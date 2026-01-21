@@ -43,11 +43,13 @@
     }
   }
 
-  .btn-check:checked+.btn-outline-secondary {
-    background-color: var(--cor-principal, #0d6efd);
-    color: white;
-    border-color: var(--cor-principal, #0d6efd);
-  }
+.btn-check:checked+.btn-outline-secondary {
+  background-color: var(--cor-principal, #0d6efd);
+  color: var(--cor-principal-texto, #ffffff);
+  border-color: var(--cor-principal, #0d6efd);
+}
+
+   
 /* ✅ Esconde o carrinho flutuante quando abrir filtros */
 body.filtros-abertos #btn_carrinho_flutuante {
   display: none !important;
@@ -524,19 +526,19 @@ footer.site-footer a{
     </div>
   </div>
 
-  <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js' defer></script>
-  <script crossorigin='anonymous' integrity='sha384-U1DAWAznBHeqEIlVSCgzq+c9gqGAJn5c/t99JyeKa9xxaYpSvHU5awsuZVVFIhvj'
-    src='https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js' defer></script>
-  <script src='https://sdk.mercadopago.com/js/v2' defer></script>
-
-<script src="js/config.js?v=20260113-1" defer></script>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js" defer></script>
+
+<script
+  crossorigin="anonymous"
+  integrity="sha384-U1DAWAznBHeqEIlVSCgzq+c9gqGAJn5c/t99JyeKa9xxaYpSvHU5awsuZVVFIhvj"
+  src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js"
+  defer></script>
+
 <script src="https://sdk.mercadopago.com/js/v2" defer></script>
 
 <script src="js/config.js?v=20260113-1" defer></script>
 <script src="js/app.js?v=2026-01-20_v5" defer></script>
+
 
 
 
