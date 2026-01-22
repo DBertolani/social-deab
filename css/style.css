@@ -57,3 +57,28 @@ body {
 #alert_carrinho:empty {
   display: none !important;
 }
+
+/* Submenu (Bootstrap 5) */
+.dropdown-submenu {
+  position: relative;
+}
+
+.dropdown-submenu > .dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-left: .1rem;
+  display: none;
+}
+
+.dropdown-submenu:hover > .dropdown-menu,
+.dropdown-submenu:focus-within > .dropdown-menu {
+  display: block;
+}
+
+/* Mobile: submenu por clique, não hover */
+@media (max-width: 991px) {
+  .dropdown-submenu > .dropdown-menu {
+    position: static;
+    margin-left: 0;
+  }
+}
