@@ -430,6 +430,22 @@ function carregar_categorias(produtos) {
 
     if (CONFIG_LOJA.MostrarCategorias === "FALSE") return;
 
+    // Se detectar categorias no formato "Depto > Sub", usa menu hierárquico
+const sep = (CONFIG_LOJA.SeparadorCategoria || ">").toString();
+const temHierarquia = (produtos || []).some(p => (p.Categoria || "").toString().includes(sep));
+
+if (temHierarquia) {
+  const tree = buildCategoryTree_(produtos, sep);
+  renderMenuHierarquico_(menu, tree, sep);
+
+  // ✅ também renderiza menu mobile no offcanvas
+  renderMenuMobileOffcanvas_(produtos);
+
+  return; // não cai no menu simples
+}
+
+
+
     const categorias = [...new Set(produtos.map(p => p.Categoria))].filter(c => c);
     if (categorias.length > 0) {
         categorias.forEach(cat => {
@@ -438,7 +454,214 @@ function carregar_categorias(produtos) {
             menu.appendChild(li);
         });
     }
+
+// ✅ também renderiza menu mobile no offcanvas (não mexe no desktop)
+renderMenuMobileOffcanvas_(produtos);
+
 }
+
+// ===== MENU HIERÁRQUICO (adição segura) =====
+function buildCategoryTree_(produtos, separador) {
+  separador = separador || ">";
+  const tree = {}; // {Depto: Set(subcats)}
+
+  (produtos || []).forEach(p => {
+    const raw = (p.Categoria || "").toString().trim();
+    if (!raw) return;
+
+    const parts = raw.split(separador).map(s => s.trim()).filter(Boolean);
+    const depto = (parts[0] || "Outros").trim();
+    const sub = (parts[1] || "").trim();
+
+    if (!tree[depto]) tree[depto] = new Set();
+    if (sub) tree[depto].add(sub);
+  });
+
+  // converte Set->Array ordenado
+  const out = {};
+  Object.keys(tree).sort().forEach(dep => {
+    out[dep] = Array.from(tree[dep]).sort();
+  });
+  return out;
+}
+
+function renderMenuHierarquico_(menuEl, tree, separador) {
+  separador = separador || ">";
+  // Item "Ver Todos"
+  menuEl.innerHTML = `
+    <li><a class="dropdown-item fw-bold" href="#" onclick="limpar_filtros(); fechar_menu_mobile()">Ver Todos</a></li>
+    <li><hr class="dropdown-divider"></li>
+  `;
+
+  const departamentos = Object.keys(tree || {});
+  if (!departamentos.length) return;
+
+  // Bootstrap 5 não tem multi-level dropdown “oficial”.
+  // Então fazemos um submenu simples via CSS + hover/focus (precisa 2 estilos no index.html — te passo abaixo).
+  departamentos.forEach(dep => {
+    const subs = tree[dep] || [];
+
+    if (!subs.length) {
+      // sem subcategoria: filtra pelo próprio departamento (ex: "Masculino")
+      const li = document.createElement("li");
+      li.innerHTML = `<a class="dropdown-item" href="#" onclick="mostrar_produtos_por_departamento('${escapeJs_(dep)}','${escapeJs_(separador)}'); fechar_menu_mobile()">${dep}</a>`;
+      menuEl.appendChild(li);
+      return;
+    }
+
+    const li = document.createElement("li");
+    li.className = "dropdown-submenu";
+    li.innerHTML = `
+      <a class="dropdown-item dropdown-toggle" href="#" onclick="toggleSubmenuMobile(event)">${dep}</a>
+      <ul class="dropdown-menu">
+        <li><a class="dropdown-item fw-bold" href="#" onclick="mostrar_produtos_por_departamento('${escapeJs_(dep)}','${escapeJs_(separador)}'); fechar_menu_mobile()">Ver ${dep}</a></li>
+        <li><hr class="dropdown-divider"></li>
+        ${subs.map(s => `
+          <li><a class="dropdown-item" href="#" onclick="mostrar_produtos_por_categoria_hier('${escapeJs_(dep)}','${escapeJs_(s)}','${escapeJs_(separador)}'); fechar_menu_mobile()">${s}</a></li>
+        `).join("")}
+      </ul>
+    `;
+    menuEl.appendChild(li);
+  });
+
+}
+
+// ===== MENU MOBILE (OFFCANVAS + ACCORDION) =====
+function fecharMenuMobileOffcanvas_() {
+  const el = document.getElementById("menuMobileOffcanvas");
+  if (!el) return;
+  const inst = bootstrap.Offcanvas.getInstance(el) || bootstrap.Offcanvas.getOrCreateInstance(el);
+  inst.hide();
+}
+
+function renderMenuMobileOffcanvas_(produtos) {
+  const host = document.getElementById("menuMobileConteudo");
+  if (!host) return;
+
+  const sep = (CONFIG_LOJA.SeparadorCategoria || ">").toString();
+  const temHierarquia = (produtos || []).some(p => (p.Categoria || "").toString().includes(sep));
+
+  // se não tem hierarquia, renderiza lista simples
+  if (!temHierarquia) {
+    const categorias = [...new Set((produtos || []).map(p => p.Categoria))].filter(c => c);
+    host.innerHTML = `
+      <div class="list-group">
+        ${categorias.map(cat => `
+          <a href="#" class="list-group-item list-group-item-action"
+             onclick="mostrar_produtos_por_categoria('${escapeJs_(cat)}'); fecharMenuMobileOffcanvas_(); return false;">
+            ${cat}
+          </a>
+        `).join("")}
+      </div>
+    `;
+    return;
+  }
+
+  // hierárquico -> accordion
+  const tree = buildCategoryTree_(produtos, sep);
+  const departamentos = Object.keys(tree || {});
+  if (!departamentos.length) { host.innerHTML = ""; return; }
+
+  let html = `<div class="accordion" id="accCatsMobile">`;
+
+  departamentos.forEach((dep, idx) => {
+    const subs = tree[dep] || [];
+    const colId = `accMobCol_${idx}`;
+
+    if (!subs.length) {
+      html += `
+        <div class="mb-2">
+          <button class="btn btn-outline-secondary w-100 text-start"
+            onclick="mostrar_produtos_por_departamento('${escapeJs_(dep)}','${escapeJs_(sep)}'); fecharMenuMobileOffcanvas_();">
+            ${dep}
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    html += `
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button"
+            data-bs-toggle="collapse" data-bs-target="#${colId}">
+            ${dep}
+          </button>
+        </h2>
+        <div id="${colId}" class="accordion-collapse collapse" data-bs-parent="#accCatsMobile">
+          <div class="accordion-body p-2">
+            <div class="d-grid gap-2">
+              <button class="btn btn-outline-primary btn-sm text-start"
+                onclick="mostrar_produtos_por_departamento('${escapeJs_(dep)}','${escapeJs_(sep)}'); fecharMenuMobileOffcanvas_();">
+                Ver ${dep}
+              </button>
+
+              ${subs.map(s => `
+                <button class="btn btn-outline-secondary btn-sm text-start"
+                  onclick="mostrar_produtos_por_categoria_hier('${escapeJs_(dep)}','${escapeJs_(s)}','${escapeJs_(sep)}'); fecharMenuMobileOffcanvas_();">
+                  ${s}
+                </button>
+              `).join("")}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  html += `</div>`;
+  host.innerHTML = html;
+}
+
+
+function escapeJs_(s){
+  return String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+}
+
+function obterProdutosFonte_() {
+  // 1) prioriza memória (mais rápido)
+  if (Array.isArray(ALL_PRODUTOS) && ALL_PRODUTOS.length) return ALL_PRODUTOS;
+
+  // 2) fallback para cache SAFE
+  return lsGetJSON(STORAGE_KEY_PRODUTOS, []);
+}
+
+function mostrar_produtos_por_departamento(dep, separador) {
+  separador = (separador || (CONFIG_LOJA.SeparadorCategoria || ">")).toString();
+
+  const dados = obterProdutosFonte_();
+
+  const depNorm = normalizarTexto(dep);
+  const filtrados = dados.filter(p => {
+    const cat = (p.Categoria || "").toString();
+    const parts = cat.split(separador).map(x => x.trim());
+    const d = parts[0] || "";
+    return normalizarTexto(d) === depNorm;
+  });
+
+  mostrar_produtos(filtrados);
+}
+
+function mostrar_produtos_por_categoria_hier(dep, sub, separador) {
+  separador = (separador || (CONFIG_LOJA.SeparadorCategoria || ">")).toString();
+
+  const dados = obterProdutosFonte_();
+
+  const depNorm = normalizarTexto(dep);
+  const subNorm = normalizarTexto(sub);
+
+  const filtrados = dados.filter(p => {
+    const cat = (p.Categoria || "").toString();
+    const parts = cat.split(separador).map(x => x.trim());
+    const d = parts[0] || "";
+    const s = parts[1] || "";
+    return normalizarTexto(d) === depNorm && normalizarTexto(s) === subNorm;
+  });
+
+  mostrar_produtos(filtrados);
+}
+
+
 
 function mostrar_produtos_por_categoria(cat) {
     var dados = (ALL_PRODUTOS && ALL_PRODUTOS.length)
@@ -449,12 +672,40 @@ function mostrar_produtos_por_categoria(cat) {
     mostrar_produtos(filtrados);
 }
 
-function fechar_menu_mobile() {
-    var navMain = document.getElementById("navbarCollapse");
-    if (navMain.classList.contains('show')) {
-        document.querySelector('.navbar-toggler').click();
-    }
+function toggleSubmenuMobile(ev){
+     if (window.innerWidth > 991) return; // só mobile
+  ev.preventDefault();
+  ev.stopPropagation();
+
+  const a = ev.currentTarget;
+  const li = a.closest(".dropdown-submenu");
+  if(!li) return;
+
+  const submenu = li.querySelector(".dropdown-menu");
+  if(!submenu) return;
+
+  // Fecha outros submenus abertos (opcional, mas recomendado)
+  li.parentElement.querySelectorAll(".dropdown-submenu .dropdown-menu")
+    .forEach(ul => {
+      if (ul !== submenu) ul.style.display = "none";
+    });
+
+  // Toggle
+  submenu.style.display = (submenu.style.display === "block") ? "none" : "block";
 }
+
+
+function fechar_menu_mobile() {
+  const navMain = document.getElementById("navbarCollapse");
+  if (!navMain) return;
+
+  // fecha apenas se estiver aberto
+  if (navMain.classList.contains("show")) {
+    const inst = bootstrap.Collapse.getInstance(navMain) || bootstrap.Collapse.getOrCreateInstance(navMain);
+    inst.hide();
+  }
+}
+
 
 var FILTROS_ATRIB = new Set();
 
@@ -2435,4 +2686,5 @@ if (offEl) {
             });
         }
     });
-});
+
+        });
