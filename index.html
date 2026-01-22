@@ -84,10 +84,20 @@ footer.site-footer a{
         <h1 id="logo_site" style="font-size: 1.25rem; margin:0; display:inline; font-weight: bold;">...</h1>
       </a>
 
-      <button aria-controls='navbarCollapse' aria-expanded='false' aria-label='Toggle navigation' class='navbar-toggler'
+      <button aria-controls="menuMobileOffcanvas" aria-expanded="false" aria-label="Toggle navigation"
+        class="navbar-toggler d-md-none"
+        data-bs-target="#menuMobileOffcanvas" data-bs-toggle="offcanvas" type="button">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      
+      <!-- ✅ mantém o collapse para desktop (se você ainda quiser) -->
+      <button aria-controls='navbarCollapse' aria-expanded='false' aria-label='Toggle navigation'
+        class='navbar-toggler d-none d-md-inline'
         data-bs-target='#navbarCollapse' data-bs-toggle='collapse' type='button'>
         <span class='navbar-toggler-icon'></span>
       </button>
+
+      
       <div class='collapse navbar-collapse' id='navbarCollapse'>
 
         <ul class='navbar-nav me-auto mb-2 mb-md-0'>
@@ -705,6 +715,25 @@ footer.site-footer a{
   </div>
 </div>
 
+<!-- ✅ OFFCANVAS: Menu Mobile (Categorias) -->
+<div class="offcanvas offcanvas-start w-100" tabindex="-1" id="menuMobileOffcanvas" aria-labelledby="menuMobileLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="menuMobileLabel">Categorias</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+  </div>
+
+  <div class="offcanvas-body">
+    <div class="d-grid gap-2 mb-3">
+      <button class="btn btn-outline-secondary" onclick="limpar_filtros(); fecharMenuMobileOffcanvas_();">
+        Ver Todos
+      </button>
+    </div>
+
+    <div id="menuMobileConteudo"></div>
+  </div>
+</div>
+
+  
 <!-- ✅ OFFCANVAS: Filtros no Mobile (TELA CHEIA) -->
 <div class="offcanvas offcanvas-start w-100" tabindex="-1" id="offcanvasFiltros" aria-labelledby="offcanvasFiltrosLabel">
   <div class="offcanvas-header">
