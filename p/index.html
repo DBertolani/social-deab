@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="robots" content="noindex">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Redirecionando…</title>
+</head>
+<body>
+<script>
+  // Funciona em GitHub Pages "Project Pages":
+  // /Teste-ProdutosDrop/p/123?x=1  -> /Teste-ProdutosDrop/?p=123&x=1
+  // /Teste-ProdutosDrop/p/?cat=Calcados -> /Teste-ProdutosDrop/?cat=Calcados
+
+  const parts = location.pathname.split("/").filter(Boolean);
+
+  // acha onde está o "p" na URL
+  const idxP = parts.indexOf("p");
+
+  // base do projeto (ex: "/Teste-ProdutosDrop")
+  const base = (idxP > 0) ? ("/" + parts.slice(0, idxP).join("/")) : "";
+
+  // se tiver ID depois de /p/ (ex: /p/123), usa como p=123
+  const id = (idxP >= 0) ? (parts[idxP + 1] || "") : "";
+
+  // mantém querystring atual (?cat=Calcados etc.)
+  const qs = location.search || "";
+
+  // monta destino
+  let dest = base + "/";
+
+  if (id) {
+    // adiciona p=ID preservando query existente
+    const sp = new URLSearchParams(location.search);
+    sp.set("p", id);
+    dest = base + "/?" + sp.toString();
+  } else if (qs) {
+    dest = base + "/" + qs;
+  }
+
+  // mantém hash (#...)
+  if (location.hash) dest += location.hash;
+
+  location.replace(dest);
+</script>
+</body>
+</html>
