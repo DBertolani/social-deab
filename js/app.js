@@ -95,6 +95,125 @@ function S(v) {
     return String(v).trim();
 }
 
+// ===============================
+// 🔗 ROUTER (Links diretos) - Produto e Categoria
+// ===============================
+var ROUTE_PENDING = null;     // { produtoId?, cat? }
+var ROUTE_APLICADA = false;
+
+function parseRouteFromUrl_() {
+  try {
+    const u = new URL(window.location.href);
+    const produtoId = (u.searchParams.get("produto") || u.searchParams.get("p") || "").trim();
+    const cat = (u.searchParams.get("cat") || "").trim();
+    return { produtoId, cat };
+  } catch (e) {
+    return { produtoId: "", cat: "" };
+  }
+}
+
+function normalizeCatKey_(catStr, sep) {
+  sep = (sep || (CONFIG_LOJA.SeparadorCategoria || ">")).toString();
+  const raw = String(catStr || "");
+  // normaliza removendo espaços ao redor do separador e padroniza texto
+  const parts = raw.split(sep).map(s => normalizarTexto(s));
+  return parts.filter(Boolean).join(sep);
+}
+
+function findOriginalCategory_(catParam, sep) {
+  sep = (sep || (CONFIG_LOJA.SeparadorCategoria || ">")).toString();
+  const key = normalizeCatKey_(catParam, sep);
+  const dados = obterProdutosFonte_();
+  const cats = [...new Set((dados || []).map(p => (p.Categoria || "").toString()).filter(Boolean))];
+
+  for (const c of cats) {
+    if (normalizeCatKey_(c, sep) === key) return c; // retorna exatamente como está na planilha
+  }
+  return ""; // não achou
+}
+
+function setUrlParams_(params, mode) {
+  // mode: "push" | "replace"
+  try {
+    const u = new URL(window.location.href);
+
+    Object.keys(params || {}).forEach(k => {
+      const v = params[k];
+      if (v === null || v === undefined || String(v).trim() === "") u.searchParams.delete(k);
+      else u.searchParams.set(k, String(v));
+    });
+
+    const newUrl = u.pathname + (u.searchParams.toString() ? ("?" + u.searchParams.toString()) : "") + u.hash;
+
+    if (mode === "push") history.pushState({}, "", newUrl);
+    else history.replaceState({}, "", newUrl);
+  } catch (e) {}
+}
+
+function clearProdutoFromUrl_(mode) {
+  setUrlParams_({ produto: "", p: "" }, mode || "replace");
+}
+
+function clearCategoriaFromUrl_(mode) {
+  setUrlParams_({ cat: "" }, mode || "replace");
+}
+
+function setCategoriaToUrl_(catRaw, mode) {
+  // salva num formato estável, sem depender de espaços: "Pai>Sub"
+  const sep = (CONFIG_LOJA.SeparadorCategoria || ">").toString();
+  const parts = String(catRaw || "").split(sep).map(s => s.trim()).filter(Boolean);
+  const compact = parts.join(sep);
+  setUrlParams_({ cat: compact, produto: "", p: "" }, mode || "push");
+}
+
+function setProdutoToUrl_(id, mode) {
+  setUrlParams_({ produto: String(id || "").trim() }, mode || "push");
+}
+
+function aplicarRouteSePronto_() {
+  if (ROUTE_APLICADA) return;
+
+  // precisa de produtos carregados (memória ou cache)
+  const dados = obterProdutosFonte_();
+  if (!Array.isArray(dados) || dados.length === 0) return;
+
+  const sep = (CONFIG_LOJA.SeparadorCategoria || ">").toString();
+
+  // se ainda não leu a rota, lê agora
+  if (!ROUTE_PENDING) ROUTE_PENDING = parseRouteFromUrl_();
+
+  const produtoId = (ROUTE_PENDING.produtoId || "").trim();
+  const catParam = (ROUTE_PENDING.cat || "").trim();
+
+  // 1) Categoria
+  if (catParam) {
+    const catOriginal = findOriginalCategory_(catParam, sep);
+
+    if (catOriginal) {
+      const parts = catOriginal.split(sep).map(s => s.trim()).filter(Boolean);
+
+      // se for "Pai > Sub"
+      if (parts.length >= 2) {
+        mostrar_produtos_por_categoria_hier(parts[0], parts[1], sep);
+      } else {
+        mostrar_produtos_por_categoria(catOriginal);
+      }
+    } else {
+      // Se não achou, não quebra o site; só segue normal
+      console.warn("Categoria do link não encontrada:", catParam);
+    }
+  }
+
+  // 2) Produto (tem prioridade visual: abre modal)
+  if (produtoId) {
+    // abrir_modal_ver já busca pelo ID e abre modal
+    abrir_modal_ver(produtoId);
+  }
+
+  ROUTE_APLICADA = true;
+}
+
+
 function moneyToFloat(v) {
     if (v === null || v === undefined) return 0;
 
@@ -640,6 +759,7 @@ function mostrar_produtos_por_departamento(dep, separador) {
   });
 
   mostrar_produtos(filtrados);
+    setCategoriaToUrl_(dep, "push");
 }
 
 function mostrar_produtos_por_categoria_hier(dep, sub, separador) {
@@ -659,18 +779,22 @@ function mostrar_produtos_por_categoria_hier(dep, sub, separador) {
   });
 
   mostrar_produtos(filtrados);
+    setCategoriaToUrl_(`${dep}${separador}${sub}`, "push");
 }
 
 
 
 function mostrar_produtos_por_categoria(cat) {
-    var dados = (ALL_PRODUTOS && ALL_PRODUTOS.length)
-        ? ALL_PRODUTOS
-       : (lsGetJSON(STORAGE_KEY_PRODUTOS, []));
+  var dados = (ALL_PRODUTOS && ALL_PRODUTOS.length)
+    ? ALL_PRODUTOS
+    : (lsGetJSON(STORAGE_KEY_PRODUTOS, []));
 
-    var filtrados = dados.filter(p => p.Categoria === cat);
-    mostrar_produtos(filtrados);
+  var filtrados = dados.filter(p => p.Categoria === cat);
+  mostrar_produtos(filtrados);
+
+  setCategoriaToUrl_(cat, "push");
 }
+
 
 function toggleSubmenuMobile(ev){
      if (window.innerWidth > 991) return; // só mobile
@@ -785,6 +909,7 @@ function carregar_produtos() {
         renderizarFiltrosAtributos(cache);
         mostrar_produtos(cache);
         mostrar_skeleton(false);
+        aplicarRouteSePronto_();
     } else {
         // Se não tem cache ou storage bloqueado, mostra o loading e vai pra rede
         mostrar_skeleton(true);
@@ -805,6 +930,7 @@ function carregar_produtos() {
                 carregar_categorias(data);
                 renderizarFiltrosAtributos(data);
                 mostrar_produtos(data);
+                aplicarRouteSePronto_();
             }
         })
         .catch(err => {
@@ -814,6 +940,8 @@ function carregar_produtos() {
             if(ALL_PRODUTOS.length > 0) mostrar_produtos(ALL_PRODUTOS);
         });
 }
+
+
 
 function getColMobileClass() {
   const n = parseInt(CONFIG_LOJA.ColunasMobile, 10);
@@ -917,7 +1045,7 @@ function mostrar_produtos(produtos) {
                   ${infoExtra}
               </p>
               <div class="mt-auto btn-group w-100">
-                  <button class="btn btn-primary w-100" onclick="abrir_modal_ver('${p.ID}')">Ver Detalhes</button>
+                  <button class="btn btn-primary w-100" onclick="abrir_modal_ver('${p.ID}'); setProdutoToUrl_('${p.ID}','push');">Ver Detalhes</button>
               </div>
           </div>
       </div>`;
@@ -940,6 +1068,8 @@ function limpar_filtros() {
         ALL_PRODUTOS = lsGetJSON(STORAGE_KEY_PRODUTOS, []);
     }
     mostrar_produtos(ALL_PRODUTOS);
+    clearCategoriaFromUrl_("push");
+    clearProdutoFromUrl_("replace");
 }
 
 
@@ -2588,6 +2718,8 @@ function abrirModalMeusPedidos(cpf) {
 
 // --- 8. INICIALIZAÇÃO ---
 document.addEventListener("DOMContentLoaded", function () {
+    ROUTE_PENDING = parseRouteFromUrl_();
+
     carregar_config();
     atualizar_carrinho();
 
@@ -2687,4 +2819,12 @@ if (offEl) {
         }
     });
 
-        });
+    // ✅ Ao fechar o modal do produto, remove ?produto= da URL (mantém ?cat se tiver)
+const elProd = document.getElementById('modalProduto');
+if (elProd) {
+  elProd.addEventListener('hidden.bs.modal', () => {
+    clearProdutoFromUrl_("replace");
+  });
+}
+
+});
