@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="robots" content="noindex" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Redirecionando…</title>
+</head>
+<body>
+<script>
+(function () {
+  // Ex.: /Teste-ProdutosDrop/p/1?x=y
+  const parts = location.pathname.split("/").filter(Boolean);
+  // parts[0] = "Teste-ProdutosDrop" (repo), parts[1] = "p", parts[2] = "1"
+  const repo = parts[0] || "";
+  const sec  = parts[1] || "";
+  const id   = parts[2] || "";
+
+  const qs = new URLSearchParams(location.search);
+
+  // Se for rota /p/ID, joga ID pra query (?p=ID) mantendo o resto (?cat, etc)
+  if (sec === "p" && id) {
+    if (!qs.has("p") && !qs.has("produto")) qs.set("p", id);
+    const target = `/${repo}/?${qs.toString()}${location.hash || ""}`;
+    location.replace(target);
+    return;
+  }
+
+  // Se for /p/ sem ID (ou outra rota inexistente), volta pra home do projeto
+  location.replace(`/${repo}/`);
+})();
+</script>
+</body>
+</html>
