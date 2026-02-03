@@ -7,6 +7,35 @@ const STORAGE_KEY_PRODUTOS = "produtos_cache";
 // --- NOVO MODO DE SEGURANÇA MÁXIMA (com cache de resultado) ---
 let __STORAGE_OK = null;
 
+// --- FILTRO VIA URL (?cat=...) ---
+let __CAT_PENDENTE_URL = null;
+
+function lerCategoriaDaUrl_() {
+  try {
+    const url = new URL(window.location.href);
+    const cat = url.searchParams.get("cat");
+    if (!cat) return null;
+    // cat já vem decodificado pelo URLSearchParams, mas garantimos:
+    return String(cat).trim();
+  } catch (e) {
+    return null;
+  }
+}
+
+// remove o "#" desnecessário e mantém a URL limpa
+function limparHashDaUrl_() {
+  if (window.location.hash === "#") {
+    history.replaceState({}, "", window.location.pathname + window.location.search);
+  }
+}
+
+// ajuste aqui para o separador que você usa nas categorias
+function normalizarCatUrl_(catUrl) {
+  // Ex.: "Calçados>Sapatenis"
+  return String(catUrl || "").trim();
+}
+
+
 function podeUsarStorage() {
   if (__STORAGE_OK !== null) return __STORAGE_OK;
 
