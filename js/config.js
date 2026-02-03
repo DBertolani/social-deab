@@ -1,13 +1,10 @@
 // js/config.js
-// Configuração global blindada contra múltiplos loads
+// Configuração global (segura)
 
-window.CONFIG = window.CONFIG || {
-  // URL do Google Apps Script
-  SCRIPT_URL: "https://script.google.com/macros/s/AKfycbwePrOqUhcq6m4GPlrBi5MQdYwcZt6NLD0dyL_Yd6bofbdRaXHdMtsvIZVxXkLIYbnnMA/exec",
+window.CONFIG = window.CONFIG || {};
 
-  // Outras configs globais podem vir aqui no futuro
-  MOEDA: "BRL"
-};
+window.CONFIG.SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwePrOqUhcq6m4GPlrBi5MQdYwcZt6NLD0dyL_Yd6bofbdRaXHdMtsvIZVxXkLIYbnnMA/exec";
+window.CONFIG.MOEDA = "BRL";
 
-// versão do front (use a mesma string que você gosta)
-window.APP_VERSION = window.APP_VERSION || "2026-01-20_v6";
+// Versão do front (usada para cache-busting do app.js)
+window.APP_VERSION = "2026-01-20_v6";
