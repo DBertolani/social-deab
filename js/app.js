@@ -1,32 +1,28 @@
 // --- CONTROLE DE VERSÃO E CACHE (MODO SEGURO) ---
-const VERSAO_SISTEMA = "2026-01-20_v5"; 
+const VERSAO_SISTEMA = "2026-01-20_v6"; 
 const STORAGE_KEY_PRODUTOS = "produtos_cache";
 
+window.APP_VERSAO = VERSAO_SISTEMA;
+console.log("[APP] Versão carregada:", VERSAO_SISTEMA);
 
 
-// --- NOVO MODO DE SEGURANÇA MÁXIMA (com cache de resultado) ---
-let __STORAGE_OK = null;
 
+// --- NOVO MODO DE SEGURANÇA MÁXIMA ---
 function podeUsarStorage() {
-  if (__STORAGE_OK !== null) return __STORAGE_OK;
-
-  try {
-    if (typeof localStorage === "undefined" || localStorage === null) {
-      __STORAGE_OK = false;
-      return false;
+    try {
+        // Verifica se a propriedade existe e se não é bloqueada
+        if (typeof localStorage === 'undefined' || localStorage === null) return false;
+        localStorage.setItem('teste_storage', '1');
+        localStorage.removeItem('teste_storage');
+        return true;
+    } catch (e) {
+        // Se cair aqui, o Tracking Prevention bloqueou
+        console.warn("Acesso ao Storage bloqueado pelo navegador.");
+        return false;
     }
-    localStorage.setItem("__t", "1");
-    localStorage.removeItem("__t");
-    __STORAGE_OK = true;
-    return true;
-  } catch (e) {
-    console.warn("Acesso ao Storage bloqueado pelo navegador.");
-    __STORAGE_OK = false;
-    return false;
-  }
 }
 
-
+// Substitua seu bloco de limpeza de cache por este (SAFE + sem erro de sintaxe):
 try {
   if (podeUsarStorage()) {
     const versaoAtual = lsGetRaw("versao_cache"); // usa helper safe
@@ -38,14 +34,10 @@ try {
       lsRemove("frete_cache");
       lsRemove("sessao_cliente");
 
-      // ✅ LIMPA CACHE EM MEMÓRIA TAMBÉM
-      ALL_PRODUTOS = [];
-
       lsSetRaw("versao_cache", VERSAO_SISTEMA); // usa helper safe
     }
   }
 } catch (e) {}
-
 
 
 
@@ -96,26 +88,11 @@ function lsSetJSON(key, obj) {
   }
 }
 
-// --- FALLBACK DO CARRINHO EM MEMÓRIA ---
-// usado apenas quando localStorage estiver bloqueado
-let __CARRINHO_MEM = [];
-
-function carrinhoGet_() {
-  const c = lsGetJSON("carrinho", null);
-  return Array.isArray(c) ? c : __CARRINHO_MEM;
-}
-
-function carrinhoSet_(arr) {
-  if (!lsSetJSON("carrinho", arr)) {
-    __CARRINHO_MEM = Array.isArray(arr) ? arr : [];
-  }
-}
-
-
 
 
 // Variável global para guardar as configurações da planilha
 var CONFIG_LOJA = {};
+var FORNECEDORES_MAP = {};
 var dadosClienteTemp = {};
 
 function S(v) {
@@ -139,69 +116,6 @@ function parseRouteFromUrl_() {
     return { produtoId: "", cat: "" };
   }
 }
-
-// ===============================
-// 🔗 ROUTER (Links diretos) - Busca e Atributos
-// ===============================
-function getBuscaFromUrl_() {
-  try {
-    const u = new URL(window.location.href);
-    return (u.searchParams.get("q") || "").trim();
-  } catch(e) { return ""; }
-}
-
-// a=tenis,couro,masculino (normalizados)
-function getAtributosFromUrl_() {
-  try {
-    const u = new URL(window.location.href);
-    const raw = (u.searchParams.get("a") || "").trim();
-    if (!raw) return [];
-    return raw.split(",").map(s => normalizarTexto(s)).filter(Boolean);
-  } catch(e) { return []; }
-}
-
-function setBuscaToUrl_(texto, mode) {
-  const v = String(texto || "").trim();
-  setUrlParams_({ q: v }, mode || "push");
-}
-
-function clearBuscaFromUrl_(mode) {
-  setUrlParams_({ q: "" }, mode || "replace");
-}
-
-function setAtributosToUrl_(setOrArray, mode) {
-  const arr = Array.isArray(setOrArray) ? setOrArray : Array.from(setOrArray || []);
-  const compact = arr.map(a => normalizarTexto(a)).filter(Boolean).join(",");
-  setUrlParams_({ a: compact }, mode || "push");
-}
-
-function clearAtributosFromUrl_(mode) {
-  setUrlParams_({ a: "" }, mode || "replace");
-}
-
-// aplica q + a no UI e executa filtro
-function aplicarBuscaEAtributosFromUrl_() {
-  // 1) Busca
-  const q = getBuscaFromUrl_();
-  if (q) {
-    const desk = document.getElementById('txt_search');
-    const mob  = document.getElementById('txt_search_mobile');
-    if (desk) desk.value = q;
-    if (mob)  mob.value  = q;
-  }
-
-  // 2) Atributos
-  const attrs = getAtributosFromUrl_();
-  FILTROS_ATRIB.clear();
-  attrs.forEach(a => FILTROS_ATRIB.add(a));
-
-  // 3) re-render filtros para marcar checks corretamente
-  renderizarFiltrosAtributos(obterProdutosFonte_());
-
-  // 4) filtra lista final
-  filtrarProdutos();
-}
-
 
 function normalizeCatKey_(catStr, sep) {
   sep = (sep || (CONFIG_LOJA.SeparadorCategoria || ">")).toString();
@@ -300,8 +214,6 @@ function aplicarRouteSePronto_() {
     // abrir_modal_ver já busca pelo ID e abre modal
     abrir_modal_ver(produtoId);
   }
-  // 3) Busca + atributos (aplica depois de carregar produtos)
-  aplicarBuscaEAtributosFromUrl_();
 
   ROUTE_APLICADA = true;
 }
@@ -385,10 +297,6 @@ if (!Array.isArray(ALL_PRODUTOS) || ALL_PRODUTOS.length === 0) {
     });
 
     mostrar_produtos(filtrados);
-        // ✅ mantém URL compartilhável (busca + atributos)
-    setBuscaToUrl_(obterTermoBusca(), "replace");
-    setAtributosToUrl_(FILTROS_ATRIB, "replace");
-
 }
 
 
@@ -454,6 +362,7 @@ if (podeUsarStorage()) {
             
             CONFIG_LOJA = config;
             aplicar_config();
+            carregar_fornecedores();
             carregar_produtos();
         })
             .catch(e => {
@@ -461,6 +370,27 @@ if (podeUsarStorage()) {
             carregar_produtos(); // CHAMADA DE EMERGÊNCIA: Garante que os produtos carreguem mesmo se a config falhar
         });
 }
+
+function carregar_fornecedores() {
+  const url = CONFIG.SCRIPT_URL + "?rota=fornecedores&nocache=" + Date.now();
+
+  fetch(url)
+    .then(r => r.json())
+    .then(d => {
+      if (!d.ok || !Array.isArray(d.itens)) {
+        console.warn("Fornecedores não carregados");
+        return;
+      }
+
+      d.itens.forEach(f => {
+        FORNECEDORES_MAP[f.nome] = f;
+      });
+
+      console.log("FORNECEDORES_MAP carregado:", FORNECEDORES_MAP);
+    })
+    .catch(e => console.error("Erro fornecedores:", e));
+}
+
 
 // --- ACESSIBILIDADE: calcula cor de texto (preto/branco) com bom contraste ---
 function hexToRgb(hex) {
@@ -972,11 +902,8 @@ function renderizarFiltrosAtributos(produtos) {
 function toggleAtributoFiltro(a) {
     if (FILTROS_ATRIB.has(a)) FILTROS_ATRIB.delete(a);
     else FILTROS_ATRIB.add(a);
-
-    setAtributosToUrl_(FILTROS_ATRIB, "replace");
-    filtrarProdutos();
+    filtrarProdutos(); // reaproveita sua busca + lista atual
 }
-
 
 function limparFiltrosAtributos() {
     FILTROS_ATRIB.clear();
@@ -1114,7 +1041,14 @@ function mostrar_produtos(produtos) {
     if (CONFIG_LOJA.ColunasDesktop == 3) colClass = 'col-md-4';
     if (CONFIG_LOJA.ColunasDesktop == 2) colClass = 'col-md-6';
 
-    produtos.forEach(p => {
+        produtos.forEach(p => {
+                // ✅ NOVO: FILTRO DE STATUS
+                // Normaliza para minúsculo para aceitar "Ativo", "ativo" ou "ATIVO"
+                // Se tiver algo escrito em Status e NÃO for "ativo", ele ignora o produto.
+                if (p.Status && String(p.Status).trim().toLowerCase() !== "ativo") {
+                    return;
+                }
+
         var altText = p.Produto + " - " + p.Categoria;
         var infoExtra = (p.Tamanhos || p.Variacoes) ? `<small>Opções disponíveis</small>` : '';
         const imgCard = ajustarImagemDrive(p.ImagemPrincipal, 500);
@@ -1170,9 +1104,6 @@ function limpar_filtros() {
     mostrar_produtos(ALL_PRODUTOS);
     clearCategoriaFromUrl_("push");
     clearProdutoFromUrl_("replace");
-        clearBuscaFromUrl_("push");
-    clearAtributosFromUrl_("push");
-
 }
 
 
@@ -1425,14 +1356,26 @@ function simular_frete_produto_individual(produto) {
 
     var subsidio = parseFloat(CONFIG_LOJA.SubsidioFrete || 0);
 
-    var dadosFrete = {
-        op: "calcular_frete",
-        cep: cep,
-        peso: produto.Peso || 0.9,
-        comprimento: produto.Comprimento || 20,
-        altura: produto.Altura || 15,
-        largura: produto.Largura || 20
-    };
+        var cepOrigemFornecedor =
+          FORNECEDORES_MAP[produto.Fornecedor]?.cep ||
+          CONFIG_LOJA.CEPPadrao;
+        
+        console.log("Frete individual:", {
+          produto: produto.Produto,
+          fornecedor: produto.Fornecedor,
+          cep_origem: cepOrigemFornecedor
+        });
+        
+        var dadosFrete = {
+          op: "calcular_frete",
+          cep: cep,
+          cep_origem: cepOrigemFornecedor,
+          peso: produto.Peso || 0.9,
+          comprimento: produto.Comprimento || 20,
+          altura: produto.Altura || 15,
+          largura: produto.Largura || 20
+        };
+
 
     fetch(CONFIG.SCRIPT_URL, {
         method: 'POST',
@@ -1515,7 +1458,7 @@ var freteSelecionadoNome = "";
 var enderecoEntregaTemp = {};
 
 function adicionar_carrinho(id, prod, preco, img, freteGratisUF, variacao) {
-var c = carrinhoGet_();
+var c = lsGetJSON('carrinho', []);
 var existe = c.find(i => i.id === id);
 
 if (existe) {
@@ -1540,7 +1483,7 @@ if (existe) {
     });
 }
 
-carrinhoSet_(c);
+lsSetJSON('carrinho', c);
 
     atualizar_carrinho();
 
@@ -1552,7 +1495,7 @@ carrinhoSet_(c);
 }
 
 function editar_item_carrinho(idComVariacao) {
-    var c = carrinhoGet_();
+    var c = lsGetJSON('carrinho', []);
     var item = c.find(i => i.id === idComVariacao);
 
     if (item) {
@@ -1566,14 +1509,14 @@ function editar_item_carrinho(idComVariacao) {
 }
 
 function mudar_quantidade(id, delta) {
-   var c = carrinhoGet_();
+   var c = lsGetJSON('carrinho', []);
     var item = c.find(i => i.id === id);
     if (item) {
         item.quantidade += delta;
         if (item.quantidade <= 0) {
             c.splice(c.findIndex(i => i.id === id), 1);
         }
-        carrinhoSet_(c);
+        lsSetJSON('carrinho', c);
         atualizar_carrinho();
         bloquearCheckout(true);
         document.getElementById('carrinho_opcoes_frete').innerHTML = "Quantidade mudou. Recalcule o frete.";
@@ -1584,9 +1527,9 @@ function mudar_quantidade(id, delta) {
 }
 
 function remover_carrinho(id) {
-   var c = carrinhoGet_();
+   var c = lsGetJSON('carrinho', []);
     c.splice(c.findIndex(i => i.id === id), 1);
-    carrinhoSet_(c);
+    lsSetJSON('carrinho', c);
     atualizar_carrinho();
     bloquearCheckout(true);
     freteCalculado = 0;
@@ -1595,7 +1538,7 @@ function remover_carrinho(id) {
 }
 
 function atualizar_carrinho() {
-    var c = carrinhoGet_();
+    var c = lsGetJSON('carrinho', []);
     var div = document.getElementById('div_carrito');
     div.innerHTML = '';
     var subtotal = 0;
@@ -1689,7 +1632,7 @@ async function calcularFreteCarrinho() {
     var cep = document.getElementById('carrinho_cep').value.replace(/\D/g, '');
     if (cep.length !== 8) { alert("CEP inválido"); return; }
 
-    var carrinho = carrinhoGet_();
+    var carrinho = lsGetJSON('carrinho', []);
     if (carrinho.length === 0) return;
 
     var divOpcoes = document.getElementById('carrinho_opcoes_frete');
@@ -1710,7 +1653,7 @@ async function calcularFreteCarrinho() {
         console.warn("Falha ao buscar UF no ViaCEP", e);
     }
 
-   var todosProdutos = obterProdutosFonte_(); // ou ALL_PRODUTOS se já estiver carregado
+   var todosProdutos = lsGetJSON(STORAGE_KEY_PRODUTOS, []);
     var pesoTotal = 0;
     var volumeTotal = 0;
 
@@ -1849,7 +1792,7 @@ async function calcularFreteCarrinho() {
 function selecionarFrete(input) {
     freteCalculado = moneyToFloat(input.value);
     freteSelecionadoNome = input.getAttribute('data-nome');
-    var c = carrinhoGet_();
+    var c = lsGetJSON('carrinho', []);
     var subtotal = c.reduce((acc, i) => acc + (i.preco * i.quantidade), 0);
     atualizarTotalFinal(subtotal);
     bloquearCheckout(false);
@@ -1968,7 +1911,7 @@ function iniciarPagamentoFinal(ev) {
     }
 
 
-    var carrinho = carrinhoGet_();
+    var carrinho = lsGetJSON('carrinho', []);
     var items = carrinho.map(i => {
         var tituloCompleto = i.producto;
         if (i.variacao && i.variacao !== "Único") tituloCompleto += " - " + i.variacao;
@@ -2366,7 +2309,7 @@ function confirmarDadosExistentes(acao) {
 $(document).ready(function () {
     // Garante que o botão flutuante reapareça ao fechar qualquer modal se houver itens
     $('.modal').on('hidden.bs.modal', function () {
-        var c = carrinhoGet_();
+        var c = lsGetJSON('carrinho', []);
         if (c.length > 0) {
             $('#btn_carrinho_flutuante').fadeIn();
         }
@@ -2398,7 +2341,7 @@ function formatBRL(v) {
 
 function abrirConfirmacaoPedido(cliente, items, logisticaInfo) {
     // Preenche o modal (você precisa ter os IDs do modalConfirmacaoPedido)
-    const carrinho = carrinhoGet_();
+    const carrinho = lsGetJSON('carrinho', []);
     const subtotal = carrinho.reduce((acc, i) => acc + ((Number(i.preco) || 0) * (Number(i.quantidade) || 1)), 0);
     const frete = Number(freteCalculado) || 0;
     const total = subtotal + frete;
@@ -2521,9 +2464,6 @@ try {
 
 // ✅ 2) LIMPAR CARRINHO APÓS ENVIAR PRO WHATSAPP
 lsRemove("carrinho");
-carrinhoSet_([]);
-atualizar_carrinho();
-
 atualizar_carrinho();
 
 freteCalculado = 0;
