@@ -351,6 +351,114 @@ function moneyToFloat(v) {
 // --- BUSCA INTELIGENTE (Nome + Categoria + Descrição) ---
 var ALL_PRODUTOS = [];
 
+// ===============================
+// ✅ LAZY LOAD de imagens da pasta (Drive)
+// ===============================
+const FOLDER_IMG_TTL_MS = 6 * 60 * 60 * 1000; // 6h
+const __FOLDER_IMG_MEM = new Map(); // cache em memória
+
+function extrairIdPastaUrl_(url) {
+  try {
+    const s = String(url || "");
+    if (!s.includes("/folders/")) return "";
+    return s.split("/folders/")[1].split(/[?\/]/)[0] || "";
+  } catch(e) { return ""; }
+}
+
+function isFolderToken_(s) {
+  return String(s || "").includes("/folders/");
+}
+
+// cache opcional em localStorage (se permitido)
+function folderCacheGet_(folderId) {
+  try {
+    if (!podeUsarStorage()) return null;
+    const raw = lsGetRaw("folder_imgs_" + folderId);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || !obj.ts || !Array.isArray(obj.imagens)) return null;
+    if (Date.now() - obj.ts > FOLDER_IMG_TTL_MS) return null;
+    return obj.imagens;
+  } catch(e) { return null; }
+}
+
+function folderCacheSet_(folderId, imagens) {
+  try {
+    if (!podeUsarStorage()) return;
+    lsSetRaw("folder_imgs_" + folderId, JSON.stringify({ ts: Date.now(), imagens: imagens || [] }));
+  } catch(e) {}
+}
+
+async function carregarImagensDaPasta_(folderId) {
+  if (!folderId) return [];
+
+  // 1) memória
+  if (__FOLDER_IMG_MEM.has(folderId)) return __FOLDER_IMG_MEM.get(folderId);
+
+  // 2) localStorage
+  const fromLs = folderCacheGet_(folderId);
+  if (fromLs && fromLs.length) {
+    __FOLDER_IMG_MEM.set(folderId, fromLs);
+    return fromLs;
+  }
+
+  // 3) rede (Apps Script)
+  const url = CONFIG.SCRIPT_URL + `?rota=imagens_pasta&folder=${encodeURIComponent(folderId)}&nocache=` + Date.now();
+  const r = await fetch(url);
+  const j = await r.json();
+
+  if (!j || !j.ok || !Array.isArray(j.imagens)) return [];
+
+  __FOLDER_IMG_MEM.set(folderId, j.imagens);
+  folderCacheSet_(folderId, j.imagens);
+  return j.imagens;
+}
+
+function dedupeLista_(arr) {
+  const seen = new Set();
+  const out = [];
+  (arr || []).forEach(x => {
+    const s = String(x || "").trim();
+    if (!s) return;
+    const key = s.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(s);
+  });
+  return out;
+}
+
+function renderCarouselImagens_(containerImagens, listaUrls) {
+  if (!containerImagens) return;
+
+  const imgsLimpa = (listaUrls || []).map(s => String(s || "").trim()).filter(s => s.length > 4);
+
+  // lista para viewer (maior, otimizada)
+  const imgsViewer = imgsLimpa.map(s => ajustarImagemDrive(s, 1600));
+
+  containerImagens.innerHTML = "";
+
+  imgsLimpa.forEach((src, idx) => {
+    const div = document.createElement("div");
+    const srcAjustado = ajustarImagemDrive(src, 1200);
+    div.className = (idx === 0) ? "carousel-item active" : "carousel-item";
+
+    div.innerHTML = `
+      <img
+        src="${srcAjustado}"
+        class="d-block w-100"
+        width="900"
+        height="300"
+        decoding="async"
+        style="height: 300px; object-fit: contain; background: #f8f9fa; cursor: zoom-in;"
+        onclick='abrirViewerImagens(${JSON.stringify(imgsViewer)}, ${idx}, "Galeria")'
+      >
+    `;
+    containerImagens.appendChild(div);
+  });
+}
+
+
 function normalizarTexto(s) {
     return String(s || "")
         .toLowerCase()
@@ -1333,43 +1441,80 @@ function abrir_modal_ver(id) {
     if (full) full.innerHTML = descCompleta;
 
 
-    var containerImagens = document.getElementById('carouselImagensContainer');
-    containerImagens.innerHTML = '';
+var containerImagens = document.getElementById('carouselImagensContainer');
+if (containerImagens) containerImagens.innerHTML = "";
 
-    var imgs = [produtoAtual.ImagemPrincipal];
-    if (produtoAtual.ImagensExtras) {
-        imgs = imgs.concat(produtoAtual.ImagensExtras.split(',').map(s => s.trim()));
-    }
+// ✅ ID do produto atual para evitar “atualizar o modal errado” se o usuário clicar rápido
+const __produtoIdAberto = String(produtoAtual.ID || "");
 
-// 1) monta lista final limpa
-const imgsLimpa = imgs
+// 1) começa só com a imagem principal (rápido)
+let imgsBase = [produtoAtual.ImagemPrincipal];
+
+// 2) pega tokens de ImagensExtras (podem ser links OU pasta)
+let tokensExtras = [];
+if (produtoAtual.ImagensExtras) {
+  tokensExtras = String(produtoAtual.ImagensExtras)
+    .split(",")
     .map(s => String(s || "").trim())
-    .filter(s => s.length > 4);
+    .filter(Boolean);
+}
 
-// lista para o viewer (imagem maior, mas otimizada)
-const imgsViewer = imgsLimpa.map(s => ajustarImagemDrive(s, 1600));
+// separa links normais e pastas
+const linksIndividuais = tokensExtras.filter(t => !isFolderToken_(t));
+const pastas = tokensExtras.filter(t => isFolderToken_(t)).map(t => extrairIdPastaUrl_(t)).filter(Boolean);
 
+// render inicial: principal + links individuais (se houver)
+let listaInicial = dedupeLista_(imgsBase.concat(linksIndividuais));
+renderCarouselImagens_(containerImagens, listaInicial);
 
-    // 2) renderiza com a lista final (a mesma para todos)
-imgsLimpa.forEach((src, idx) => {
-  var div = document.createElement('div');
-  const srcAjustado = ajustarImagemDrive(src, 1200);
-  div.className = (idx === 0) ? 'carousel-item active' : 'carousel-item';
+// ✅ se houver pasta, mostra “carregando fotos…” (sem travar o site)
+const boxInfo = document.getElementById("modalInfoImagensExtras"); // opcional
+if (!boxInfo && pastas.length) {
+  // se você não tiver esse elemento no HTML, não tem problema; ignora
+}
+if (pastas.length && containerImagens) {
+  // cria um aviso simples abaixo do carrossel (se existir um container no modal)
+  const aviso = document.getElementById("avisoImgsExtras");
+  if (!aviso) {
+    const el = document.createElement("div");
+    el.id = "avisoImgsExtras";
+    el.className = "small text-muted mt-2";
+    el.innerHTML = 'Carregando fotos adicionais…';
+    containerImagens.parentElement?.appendChild(el);
+  } else {
+    aviso.innerHTML = 'Carregando fotos adicionais…';
+    aviso.style.display = "block";
+  }
+}
 
-  div.innerHTML = `
-    <img
-      src="${srcAjustado}"
-      class="d-block w-100"
-      width="900"
-      height="300"
-      decoding="async"
-      style="height: 300px; object-fit: contain; background: #f8f9fa; cursor: zoom-in;"
-      onclick='abrirViewerImagens(${JSON.stringify(imgsViewer)}, ${idx}, "Galeria")'
-    >
-  `;
+// 3) carrega as imagens das pastas (lazy) e atualiza o carrossel
+(async function () {
+  if (!pastas.length) return;
 
-  containerImagens.appendChild(div);
-});
+  let todas = listaInicial.slice();
+
+  for (const folderId of pastas) {
+    try {
+      const imgsPasta = await carregarImagensDaPasta_(folderId);
+      if (imgsPasta && imgsPasta.length) {
+        todas = dedupeLista_(todas.concat(imgsPasta));
+      }
+    } catch (e) {
+      console.warn("Falha ao carregar pasta:", folderId, e);
+    }
+  }
+
+  // se o usuário já abriu outro produto, não mexe
+  if (!produtoAtual || String(produtoAtual.ID || "") !== __produtoIdAberto) return;
+
+  // re-render com tudo
+  renderCarouselImagens_(containerImagens, todas);
+
+  // esconde aviso
+  const aviso = document.getElementById("avisoImgsExtras");
+  if (aviso) aviso.style.display = "none";
+})();
+
 
 
 
