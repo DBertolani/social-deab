@@ -305,6 +305,23 @@ function aplicarRouteSePronto_() {
   const produtoId = (ROUTE_PENDING.produtoId || "").trim();
   const catParam = (ROUTE_PENDING.cat || "").trim();
 
+  // ✅ NOVO: se veio categoria na URL, limpa busca e atributos
+  // (senão a busca/atributos podem "sobrescrever" e mostrar o catálogo geral)
+  if (catParam) {
+    // limpa params da URL
+    clearBuscaFromUrl_("replace");
+    clearAtributosFromUrl_("replace");
+
+    // limpa inputs de busca
+    const desk = document.getElementById('txt_search');
+    const mob  = document.getElementById('txt_search_mobile');
+    if (desk) desk.value = "";
+    if (mob)  mob.value  = "";
+
+    // limpa filtros de atributos em memória
+    FILTROS_ATRIB.clear();
+  }
+
   // 1) Categoria
   if (catParam) {
     const catOriginal = findOriginalCategory_(catParam, sep);
@@ -319,21 +336,24 @@ function aplicarRouteSePronto_() {
         mostrar_produtos_por_categoria(catOriginal);
       }
     } else {
-      // Se não achou, não quebra o site; só segue normal
       console.warn("Categoria do link não encontrada:", catParam);
     }
   }
 
   // 2) Produto (tem prioridade visual: abre modal)
   if (produtoId) {
-    // abrir_modal_ver já busca pelo ID e abre modal
     abrir_modal_ver(produtoId);
   }
+
   // 3) Busca + atributos (aplica depois de carregar produtos)
-  aplicarBuscaEAtributosFromUrl_();
+  // ✅ IMPORTANTE: se veio catParam, não aplica busca/atributos por cima
+  if (!catParam) {
+    aplicarBuscaEAtributosFromUrl_();
+  }
 
   ROUTE_APLICADA = true;
 }
+
 
 
 function moneyToFloat(v) {
