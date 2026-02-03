@@ -1,9 +1,12 @@
 // --- CONTROLE DE VERSÃO E CACHE (MODO SEGURO) ---
-const VERSAO_SISTEMA = "2026-01-20_v6"; 
+// pega a versão do config.js (fonte única)
+const VERSAO_SISTEMA = window.APP_VERSION || "sem-versao";
+
 const STORAGE_KEY_PRODUTOS = "produtos_cache";
 
 window.APP_VERSAO = VERSAO_SISTEMA;
 console.log("[APP] Versão carregada:", VERSAO_SISTEMA);
+
 
 
 
