@@ -1,5 +1,5 @@
 // --- CONTROLE DE VERSÃO E CACHE (MODO SEGURO) ---
-const VERSAO_SISTEMA = "2026-01-20_v5"; 
+const VERSAO_SISTEMA = "2026-02-03_v6_ativados";
 const STORAGE_KEY_PRODUTOS = "produtos_cache";
 
 
@@ -358,6 +358,50 @@ function normalizarTexto(s) {
         .replace(/[\u0300-\u036f]/g, "") // remove acentos
         .trim();
 }
+
+// ===============================
+// ✅ FILTRO: somente produtos "Ativado" na planilha
+// - Compatível com colunas: Status / Ativo / Ativado / Publicar / Exibir / Visivel...
+// - Se NÃO existir nenhuma dessas colunas, mantém o comportamento atual (mostra todos).
+// ===============================
+function getCampoAtivacao_(p) {
+  if (!p || typeof p !== "object") return "";
+
+  // tenta achar um campo conhecido (com variações comuns)
+  return (
+    p.Status ?? p.status ??
+    p.Ativado ?? p.ativado ??
+    p.Ativo ?? p.ativo ??
+    p.Publicar ?? p.publicar ??
+    p.Exibir ?? p.exibir ??
+    p.Visivel ?? p.visivel ??
+    p["Ativação"] ?? p["Ativacao"] ??
+    ""
+  );
+}
+
+function filtrarSomenteAtivados_(lista) {
+  if (!Array.isArray(lista)) return [];
+
+  // Se nenhum item tiver campo de ativação, não filtra (para não “sumir tudo”)
+  const alguemTemCampo = lista.some(p => {
+    const v = getCampoAtivacao_(p);
+    return v !== null && v !== undefined && String(v).trim() !== "";
+  });
+  if (!alguemTemCampo) return lista;
+
+  return lista.filter(p => {
+    const v = normalizarTexto(getCampoAtivacao_(p));
+    // Aceita "Ativado" (principal), e também variações comuns
+    return (
+      v === "ativado" || v === "ativo" ||
+      v === "sim" || v === "true" || v === "1" ||
+      v === "publicar" || v === "publicado" ||
+      v === "on"
+    );
+  });
+}
+
 
 function filtrarProdutos() {
     const termo = normalizarTexto(obterTermoBusca());
@@ -1004,13 +1048,17 @@ function carregar_produtos() {
     }
     
     if (cache && cache.length > 0) {
-        ALL_PRODUTOS = cache;
-        carregar_categorias(cache);
-        renderizarFiltrosAtributos(cache);
-        mostrar_produtos(cache);
+        const ativadosCache = filtrarSomenteAtivados_(cache);
+
+        ALL_PRODUTOS = ativadosCache;
+        carregar_categorias(ativadosCache);
+        renderizarFiltrosAtributos(ativadosCache);
+        mostrar_produtos(ativadosCache);
+
         mostrar_skeleton(false);
         aplicarRouteSePronto_();
     } else {
+
         // Se não tem cache ou storage bloqueado, mostra o loading e vai pra rede
         mostrar_skeleton(true);
     }
@@ -1021,17 +1069,24 @@ function carregar_produtos() {
         .then(r => r.json())
         .then(data => {
             mostrar_skeleton(false);
+          
             if (Array.isArray(data) && data.length > 0) {
-                // Tenta salvar no cache, mas se falhar não trava o site
+                // ✅ Filtra só "Ativado" antes de tudo
+                const ativados = filtrarSomenteAtivados_(data);
+
+                // (opção segura) salva o ORIGINAL no cache para não “perder” nada
+                // mas o site só usa os ativados no ALL_PRODUTOS
                 if (podeUsarStorage()) {
                     lsSetJSON(STORAGE_KEY_PRODUTOS, data);
                 }
-                ALL_PRODUTOS = data;
-                carregar_categorias(data);
-                renderizarFiltrosAtributos(data);
-                mostrar_produtos(data);
+
+                ALL_PRODUTOS = ativados;
+                carregar_categorias(ativados);
+                renderizarFiltrosAtributos(ativados);
+                mostrar_produtos(ativados);
                 aplicarRouteSePronto_();
             }
+
         })
         .catch(err => {
             mostrar_skeleton(false);
