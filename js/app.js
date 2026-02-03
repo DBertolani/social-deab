@@ -279,12 +279,18 @@ function clearCategoriaFromUrl_(mode) {
 }
 
 function setCategoriaToUrl_(catRaw, mode) {
-  // salva num formato estável, sem depender de espaços: "Pai>Sub"
   const sep = (CONFIG_LOJA.SeparadorCategoria || ">").toString();
   const parts = String(catRaw || "").split(sep).map(s => s.trim()).filter(Boolean);
   const compact = parts.join(sep);
-  setUrlParams_({ cat: compact, produto: "", p: "" }, mode || "push");
+
+  // ✅ limpa busca e atributos quando define categoria
+  setUrlParams_({
+    cat: compact,
+    produto: "", p: "",
+    q: "", a: ""
+  }, mode || "push");
 }
+
 
 function setProdutoToUrl_(id, mode) {
   setUrlParams_({ produto: String(id || "").trim() }, mode || "push");
@@ -570,36 +576,38 @@ function filtrarSomenteAtivados_(lista) {
 
 
 function filtrarProdutos() {
-    const termo = normalizarTexto(obterTermoBusca());
+  const termo = normalizarTexto(obterTermoBusca());
 
-if (!Array.isArray(ALL_PRODUTOS) || ALL_PRODUTOS.length === 0) {
+  if (!Array.isArray(ALL_PRODUTOS) || ALL_PRODUTOS.length === 0) {
     ALL_PRODUTOS = lsGetJSON(STORAGE_KEY_PRODUTOS, []);
+  }
+
+  const filtrados = ALL_PRODUTOS.filter(p => {
+    const nome = normalizarTexto(p.Produto);
+    const cat = normalizarTexto(p.Categoria);
+    const desc = normalizarTexto(p.Descrição);
+
+    const attrs = extrairAtributosDeProduto(p);
+    const passaAtributos =
+      (FILTROS_ATRIB.size === 0) ||
+      Array.from(FILTROS_ATRIB).every(f => attrs.includes(f));
+
+    const passaTexto =
+      !termo || nome.includes(termo) || cat.includes(termo) || desc.includes(termo);
+
+    return passaAtributos && passaTexto;
+  });
+
+  mostrar_produtos(filtrados);
+
+  // ✅ NOVO: se está usando busca/filtros, o link deve ser de busca/filtro (não de categoria)
+  clearCategoriaFromUrl_("replace");
+  clearProdutoFromUrl_("replace");
+
+  setBuscaToUrl_(obterTermoBusca(), "replace");
+  setAtributosToUrl_(FILTROS_ATRIB, "replace");
 }
 
-    const filtrados = ALL_PRODUTOS.filter(p => {
-        const nome = normalizarTexto(p.Produto);
-        const cat = normalizarTexto(p.Categoria);
-        const desc = normalizarTexto(p.Descrição);
-
-        // ✅ filtro por atributos (se tiver algum marcado)
-        const attrs = extrairAtributosDeProduto(p);
-        const passaAtributos =
-            (FILTROS_ATRIB.size === 0) ||
-            Array.from(FILTROS_ATRIB).every(f => attrs.includes(f));
-
-        // ✅ filtro por texto (se termo estiver vazio, passa)
-        const passaTexto =
-            !termo || nome.includes(termo) || cat.includes(termo) || desc.includes(termo);
-
-        return passaAtributos && passaTexto;
-    });
-
-    mostrar_produtos(filtrados);
-        // ✅ mantém URL compartilhável (busca + atributos)
-    setBuscaToUrl_(obterTermoBusca(), "replace");
-    setAtributosToUrl_(FILTROS_ATRIB, "replace");
-
-}
 
 
 function obterTermoBusca() {
@@ -876,7 +884,7 @@ if (temHierarquia) {
     if (categorias.length > 0) {
         categorias.forEach(cat => {
             var li = document.createElement('li');
-            li.innerHTML = `<a class="dropdown-item" href="#" onclick="mostrar_produtos_por_categoria('${cat}'); fechar_menu_mobile()">${cat}</a>`;
+            li.innerHTML = `<a class="dropdown-item" href="#" onclick="mostrar_produtos_por_categoria('${escapeJs_(cat)}'); fechar_menu_mobile()">${cat}</a>`;
             menu.appendChild(li);
         });
     }
@@ -1180,12 +1188,17 @@ function renderizarFiltrosAtributos(produtos) {
 
 
 function toggleAtributoFiltro(a) {
-    if (FILTROS_ATRIB.has(a)) FILTROS_ATRIB.delete(a);
-    else FILTROS_ATRIB.add(a);
+  if (FILTROS_ATRIB.has(a)) FILTROS_ATRIB.delete(a);
+  else FILTROS_ATRIB.add(a);
 
-    setAtributosToUrl_(FILTROS_ATRIB, "replace");
-    filtrarProdutos();
+  // ✅ NOVO: filtros viram o “estado principal” do link
+  clearCategoriaFromUrl_("replace");
+  clearProdutoFromUrl_("replace");
+
+  setAtributosToUrl_(FILTROS_ATRIB, "replace");
+  filtrarProdutos();
 }
+
 
 
 function limparFiltrosAtributos() {
@@ -3190,5 +3203,12 @@ if (elProd) {
     clearProdutoFromUrl_("replace");
   });
 }
+
+    // ✅ NOVO: Back/Forward do navegador (voltar/avançar)
+    window.addEventListener("popstate", () => {
+      ROUTE_APLICADA = false;
+      ROUTE_PENDING = parseRouteFromUrl_();
+      aplicarRouteSePronto_();
+    });
 
 });
