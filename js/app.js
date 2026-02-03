@@ -1230,74 +1230,88 @@ function atualizarBadgeFiltros() {
 
 // --- 3. PRODUTOS E LOADING ---
 function carregar_produtos() {
-    // 1. Tenta pegar o cache SOMENTE se puder usar storage
-    let cache = [];
-    if (podeUsarStorage()) {
-        cache = lsGetJSON(STORAGE_KEY_PRODUTOS, []);
-    }
-    
-if (cache && cache.length > 0) {
-  const ativadosCache = filtrarSomenteAtivados_(cache);
-
-  ALL_PRODUTOS = ativadosCache;
-  carregar_categorias(ativadosCache);
-  renderizarFiltrosAtributos(ativadosCache);
-
-  mostrar_skeleton(false);
-
-  if (temRouteAtiva_()) {
-    ROUTE_APLICADA = false;
-    ROUTE_PENDING = parseRouteFromUrl_();
-    aplicarRouteSePronto_();
-  } else {
-    mostrar_produtos(ativadosCache);
+  // 1) Tenta pegar o cache SOMENTE se puder usar storage
+  let cache = [];
+  if (podeUsarStorage()) {
+    cache = lsGetJSON(STORAGE_KEY_PRODUTOS, []);
   }
-} else {
-  // Se não tem cache ou storage bloqueado, mostra o loading e vai pra rede
-  mostrar_skeleton(true);
+
+  // 2) Se tem cache, renderiza rápido (mas SEM bloquear a atualização via rede)
+  if (cache && cache.length > 0) {
+    const ativadosCache = filtrarSomenteAtivados_(cache);
+
+    ALL_PRODUTOS = ativadosCache;
+    carregar_categorias(ativadosCache);
+    renderizarFiltrosAtributos(ativadosCache);
+    mostrar_skeleton(false);
+
+    // Se existe rota na URL, aplica a rota; senão mostra catálogo
+    if (temRouteAtiva_()) {
+      ROUTE_APLICADA = false;
+      ROUTE_PENDING = parseRouteFromUrl_();
+      aplicarRouteSePronto_();
+    } else {
+      mostrar_produtos(ativadosCache);
+    }
+  } else {
+    // Se não tem cache (ou storage bloqueado), mostra skeleton enquanto busca na rede
+    mostrar_skeleton(true);
+  }
+
+  // 3) Busca na rede (sempre), para atualizar
+  var url = CONFIG.SCRIPT_URL + "?rota=produtos&nocache=" + new Date().getTime();
+
+  fetch(url)
+    .then(r => r.json())
+    .then(data => {
+      mostrar_skeleton(false);
+
+      if (Array.isArray(data) && data.length > 0) {
+        // ✅ Filtra só "Ativado"
+        const ativados = filtrarSomenteAtivados_(data);
+
+        // salva o ORIGINAL no cache (se permitido)
+        if (podeUsarStorage()) {
+          lsSetJSON(STORAGE_KEY_PRODUTOS, data);
+        }
+
+        ALL_PRODUTOS = ativados;
+        carregar_categorias(ativados);
+        renderizarFiltrosAtributos(ativados);
+
+        // Se existe rota, reaplica agora que chegou dado novo
+        if (temRouteAtiva_()) {
+          ROUTE_APLICADA = false;
+          ROUTE_PENDING = parseRouteFromUrl_();
+          aplicarRouteSePronto_();
+        } else {
+          mostrar_produtos(ativados);
+        }
+      } else {
+        // Se veio vazio, pelo menos mantém o que já tinha em tela/memória
+        if (ALL_PRODUTOS && ALL_PRODUTOS.length > 0) {
+          mostrar_produtos(ALL_PRODUTOS);
+        } else {
+          mostrar_produtos([]);
+        }
+      }
+    })
+    .catch(err => {
+      mostrar_skeleton(false);
+      console.error("Erro na Planilha:", err);
+
+      // Se der erro de rede, tenta mostrar o que tem na memória pelo menos
+      if (ALL_PRODUTOS && ALL_PRODUTOS.length > 0) {
+        mostrar_produtos(ALL_PRODUTOS);
+      } else if (cache && cache.length > 0) {
+        // último fallback: cache cru (mesmo sem ativados)
+        mostrar_produtos(filtrarSomenteAtivados_(cache));
+      } else {
+        mostrar_produtos([]);
+      }
+    });
 }
 
-
-    var url = CONFIG.SCRIPT_URL + "?rota=produtos&nocache=" + new Date().getTime();
-    
-fetch(url)
-  .then(r => r.json())
-  .then(data => {
-    mostrar_skeleton(false);
-
-    if (Array.isArray(data) && data.length > 0) {
-      // ✅ Filtra só "Ativado" antes de tudo
-      const ativados = filtrarSomenteAtivados_(data);
-
-      // salva o ORIGINAL no cache (opção segura)
-      if (podeUsarStorage()) {
-        lsSetJSON(STORAGE_KEY_PRODUTOS, data);
-      }
-
-      ALL_PRODUTOS = ativados;
-      carregar_categorias(ativados);
-      renderizarFiltrosAtributos(ativados);
-
-      // ✅ Se existe rota na URL, NÃO mostre o catálogo geral por cima.
-      if (temRouteAtiva_()) {
-        ROUTE_APLICADA = false;
-        ROUTE_PENDING = parseRouteFromUrl_();
-        aplicarRouteSePronto_();
-      } else {
-        mostrar_produtos(ativados);
-      }
-    } else {
-      // se a planilha vier vazia, pelo menos mostra algo que já estava
-      if (ALL_PRODUTOS && ALL_PRODUTOS.length) {
-        mostrar_produtos(ALL_PRODUTOS);
-      }
-    }
-  })
-  .catch(err => {
-    mostrar_skeleton(false);
-    console.error("Erro na Planilha:", err);
-    if (ALL_PRODUTOS.length > 0) mostrar_produtos(ALL_PRODUTOS);
-  });
 
 
 
