@@ -541,8 +541,20 @@ footer.site-footer a{
 <script src="https://sdk.mercadopago.com/js/v2" defer></script>
 
 
-<script src="js/config.js?v=20260113-1" defer></script>
-<script src="js/app.2026-01-20_v6.js" defer></script>
+<!-- Carrega config primeiro (sem defer) -->
+<script src="js/config.js?v=20260113-1"></script>
+
+<!-- Loader: injeta app.js com ?v automático -->
+<script>
+  (function () {
+    var v = window.APP_VERSION || Date.now(); // fallback
+    var s = document.createElement('script');
+    s.src = 'js/app.js?v=' + encodeURIComponent(v);
+    s.defer = true;
+    document.head.appendChild(s);
+  })();
+</script>
+
 
 
 
