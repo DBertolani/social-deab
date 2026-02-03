@@ -90,3 +90,11 @@ body {
     display: none !important;
   }
 }
+
+/* ✅ Força esconder o sanduíche no “desktop” (>=768) mesmo se alguma regra estiver atrapalhando */
+@media (min-width: 768px) {
+  #btn_menu_sanduiche {
+    display: none !important;
+  }
+}
+
