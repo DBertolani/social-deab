@@ -1236,66 +1236,68 @@ function carregar_produtos() {
         cache = lsGetJSON(STORAGE_KEY_PRODUTOS, []);
     }
     
-    if (cache && cache.length > 0) {
-        const ativadosCache = filtrarSomenteAtivados_(cache);
+if (cache && cache.length > 0) {
+  const ativadosCache = filtrarSomenteAtivados_(cache);
 
-        ALL_PRODUTOS = ativadosCache;
-        carregar_categorias(ativadosCache);
-        renderizarFiltrosAtributos(ativadosCache);
-mostrar_skeleton(false);
+  ALL_PRODUTOS = ativadosCache;
+  carregar_categorias(ativadosCache);
+  renderizarFiltrosAtributos(ativadosCache);
 
-if (temRouteAtiva_()) {
-  ROUTE_APLICADA = false;
-  ROUTE_PENDING = parseRouteFromUrl_();
-  aplicarRouteSePronto_();
+  mostrar_skeleton(false);
+
+  if (temRouteAtiva_()) {
+    ROUTE_APLICADA = false;
+    ROUTE_PENDING = parseRouteFromUrl_();
+    aplicarRouteSePronto_();
+  } else {
+    mostrar_produtos(ativadosCache);
+  }
 } else {
-  mostrar_produtos(ativadosCache);
-} else {
+  // Se não tem cache ou storage bloqueado, mostra o loading e vai pra rede
+  mostrar_skeleton(true);
+}
 
-        // Se não tem cache ou storage bloqueado, mostra o loading e vai pra rede
-        mostrar_skeleton(true);
-    }
 
     var url = CONFIG.SCRIPT_URL + "?rota=produtos&nocache=" + new Date().getTime();
     
-    fetch(url)
-        .then(r => r.json())
-        .then(data => {
-            mostrar_skeleton(false);
-          
-            if (Array.isArray(data) && data.length > 0) {
-                // ✅ Filtra só "Ativado" antes de tudo
-                const ativados = filtrarSomenteAtivados_(data);
+fetch(url)
+  .then(r => r.json())
+  .then(data => {
+    mostrar_skeleton(false);
 
-                // (opção segura) salva o ORIGINAL no cache para não “perder” nada
-                // mas o site só usa os ativados no ALL_PRODUTOS
-                if (podeUsarStorage()) {
-                    lsSetJSON(STORAGE_KEY_PRODUTOS, data);
-                }
+    if (Array.isArray(data) && data.length > 0) {
+      // ✅ Filtra só "Ativado" antes de tudo
+      const ativados = filtrarSomenteAtivados_(data);
 
-ALL_PRODUTOS = ativados;
-carregar_categorias(ativados);
-renderizarFiltrosAtributos(ativados);
+      // salva o ORIGINAL no cache (opção segura)
+      if (podeUsarStorage()) {
+        lsSetJSON(STORAGE_KEY_PRODUTOS, data);
+      }
 
-// ✅ Se existe rota na URL, NÃO mostre o catálogo geral por cima.
-// Reaplica a rota agora que chegou dado novo.
-if (temRouteAtiva_()) {
-  ROUTE_APLICADA = false;
-  ROUTE_PENDING = parseRouteFromUrl_();
-  aplicarRouteSePronto_();
-} else {
-  mostrar_produtos(ativados);
-}
+      ALL_PRODUTOS = ativados;
+      carregar_categorias(ativados);
+      renderizarFiltrosAtributos(ativados);
 
-
-        })
-        .catch(err => {
-            mostrar_skeleton(false);
-            console.error("Erro na Planilha:", err);
-            // Se der erro de rede, tenta mostrar o que tem na memória pelo menos
-            if(ALL_PRODUTOS.length > 0) mostrar_produtos(ALL_PRODUTOS);
-        });
-}
+      // ✅ Se existe rota na URL, NÃO mostre o catálogo geral por cima.
+      if (temRouteAtiva_()) {
+        ROUTE_APLICADA = false;
+        ROUTE_PENDING = parseRouteFromUrl_();
+        aplicarRouteSePronto_();
+      } else {
+        mostrar_produtos(ativados);
+      }
+    } else {
+      // se a planilha vier vazia, pelo menos mostra algo que já estava
+      if (ALL_PRODUTOS && ALL_PRODUTOS.length) {
+        mostrar_produtos(ALL_PRODUTOS);
+      }
+    }
+  })
+  .catch(err => {
+    mostrar_skeleton(false);
+    console.error("Erro na Planilha:", err);
+    if (ALL_PRODUTOS.length > 0) mostrar_produtos(ALL_PRODUTOS);
+  });
 
 
 
