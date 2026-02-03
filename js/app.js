@@ -456,7 +456,16 @@ function renderCarouselImagens_(containerImagens, listaUrls) {
     `;
     containerImagens.appendChild(div);
   });
+
+  // ✅ AJUSTE: garante que o Bootstrap Carousel esteja inicializado após re-render
+  try {
+    const carouselEl = containerImagens.closest(".carousel");
+    if (carouselEl) {
+      bootstrap.Carousel.getInstance(carouselEl) || new bootstrap.Carousel(carouselEl);
+    }
+  } catch (e) {}
 }
+
 
 
 function normalizarTexto(s) {
