@@ -882,14 +882,15 @@ if (temHierarquia) {
   const tree = buildCategoryTree_(produtos, sep);
   renderMenuHierarquico_(menu, tree, sep);
 
-  // ✅ mobile (offcanvas)
+  // ✅ também renderiza menu mobile no offcanvas
   renderMenuMobileOffcanvas_(produtos);
 
-  // ✅ desktop (barra do topo)  <<< ESTE ERA O QUE FALTAVA
+  // ✅ FALTAVA ISSO: renderizar a barra de categorias no topo (desktop)
   renderMenuDesktopTop_(produtos);
 
-  return; // mantém: não cai no menu simples
+  return; // mantém o return (não cai no menu simples)
 }
+
 
 
 
