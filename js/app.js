@@ -1,5 +1,5 @@
 // --- CONTROLE DE VERSÃO E CACHE (MODO SEGURO) ---
-const VERSAO_SISTEMA = "2026-02-03_v6_ativados";
+const VERSAO_SISTEMA = "2026-02-03_v7_fix-cat-pai";
 const STORAGE_KEY_PRODUTOS = "produtos_cache";
 
 
@@ -339,22 +339,31 @@ function aplicarRouteSePronto_() {
   }
 
   // 1) Categoria
-  if (catParam) {
-    const catOriginal = findOriginalCategory_(catParam, sep);
+// 1) Categoria
+if (catParam) {
+  const catOriginal = findOriginalCategory_(catParam, sep);
 
-    if (catOriginal) {
-      const parts = catOriginal.split(sep).map(s => s.trim()).filter(Boolean);
+  if (catOriginal) {
+    const parts = catOriginal.split(sep).map(s => s.trim()).filter(Boolean);
 
-      // se for "Pai > Sub"
-      if (parts.length >= 2) {
-        mostrar_produtos_por_categoria_hier(parts[0], parts[1], sep);
-      } else {
-        mostrar_produtos_por_categoria(catOriginal);
-      }
+    // se for "Pai > Sub"
+    if (parts.length >= 2) {
+      mostrar_produtos_por_categoria_hier(parts[0], parts[1], sep);
+    } else {
+      mostrar_produtos_por_categoria(catOriginal);
+    }
+
+  } else {
+    // ✅ NOVO: se não achou categoria exata, trata como "departamento/pai"
+    // (ex.: URL ?cat=Masculino)
+    if (!String(catParam).includes(sep)) {
+      mostrar_produtos_por_departamento(catParam, sep);
     } else {
       console.warn("Categoria do link não encontrada:", catParam);
     }
   }
+}
+
 
   // 2) Produto (tem prioridade visual: abre modal)
   if (produtoId) {
