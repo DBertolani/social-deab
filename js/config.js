@@ -7,4 +7,8 @@ window.CONFIG = window.CONFIG || {
     
     // Outras configs globais podem vir aqui no futuro
     MOEDA: "BRL"
+
+// versão do front (use a mesma string que você gosta)
+window.APP_VERSION = "2026-01-20_v6";
+
 };
