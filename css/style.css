@@ -82,3 +82,11 @@ body {
     margin-left: 0;
   }
 }
+
+
+/* ✅ Força esconder o sanduíche no desktop */
+@media (min-width: 768px) {
+  .navbar .navbar-toggler {
+    display: none !important;
+  }
+}
