@@ -73,6 +73,28 @@ footer.site-footer a{
 }
 
 
+/* ✅ Barra de categorias no topo (desktop) */
+#catsDesktopBar .cat-top-btn{
+  color: rgba(255,255,255,.92);
+  border: 1px solid rgba(255,255,255,.25);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  text-decoration: none;
+  line-height: 1;
+  background: rgba(255,255,255,.06);
+}
+#catsDesktopBar .cat-top-btn:hover{
+  background: rgba(255,255,255,.14);
+}
+#catsDesktopBar .cat-top-btn.active{
+  background: rgba(255,255,255,.22);
+  border-color: rgba(255,255,255,.55);
+  font-weight: 700;
+}
+
+
+
 
 
 
@@ -100,6 +122,9 @@ footer.site-footer a{
       <div class='collapse navbar-collapse' id='navbarCollapse'>
 
         <ul class='navbar-nav me-auto mb-2 mb-md-0'>
+          <!-- ✅ CATEGORIAS TOP (SOMENTE DESKTOP) -->
+          <div class="d-none d-md-flex align-items-center flex-wrap gap-2 ms-2" id="catsDesktopBar"></div>
+
           
           <li class='nav-item'>
             <a class='nav-link active fw-bold' data-bs-target='#modalLogin' data-bs-toggle='modal' href='#' id='btn_login'>
@@ -107,11 +132,12 @@ footer.site-footer a{
             </a>
           </li>
 
-          <li class='nav-item dropdown'>
-            <a aria-expanded='false' class='nav-link active dropdown-toggle' data-bs-toggle='dropdown' href='#'
-              id='navbarDropdownMenuLink' role='button'>Categorias</a>
-            <ul aria-labelledby='navbarDropdownMenuLink' class='dropdown-menu' id='categoria_menu'></ul>
-          </li>
+            <li class='nav-item dropdown d-md-none'>
+              <a aria-expanded='false' class='nav-link active dropdown-toggle' data-bs-toggle='dropdown' href='#'
+                id='navbarDropdownMenuLink' role='button'>Categorias</a>
+              <ul aria-labelledby='navbarDropdownMenuLink' class='dropdown-menu' id='categoria_menu'></ul>
+            </li>
+
           
         </ul>
         <form class="d-none d-md-flex" id="form_busca" role="search" action="javascript:void(0)"> <input
