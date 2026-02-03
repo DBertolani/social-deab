@@ -189,6 +189,16 @@ function getAtributosFromUrl_() {
   } catch(e) { return []; }
 }
 
+function temRouteAtiva_() {
+  const r = ROUTE_PENDING || parseRouteFromUrl_();
+  const hasCat = !!String(r.cat || "").trim();
+  const hasProd = !!String(r.produtoId || "").trim();
+  const hasQ = !!String(getBuscaFromUrl_() || "").trim();
+  const hasA = (getAtributosFromUrl_() || []).length > 0;
+  return hasCat || hasProd || hasQ || hasA;
+}
+
+
 function setBuscaToUrl_(texto, mode) {
   const v = String(texto || "").trim();
   setUrlParams_({ q: v }, mode || "push");
@@ -1232,11 +1242,15 @@ function carregar_produtos() {
         ALL_PRODUTOS = ativadosCache;
         carregar_categorias(ativadosCache);
         renderizarFiltrosAtributos(ativadosCache);
-        mostrar_produtos(ativadosCache);
+mostrar_skeleton(false);
 
-        mostrar_skeleton(false);
-        aplicarRouteSePronto_();
-    } else {
+if (temRouteAtiva_()) {
+  ROUTE_APLICADA = false;
+  ROUTE_PENDING = parseRouteFromUrl_();
+  aplicarRouteSePronto_();
+} else {
+  mostrar_produtos(ativadosCache);
+} else {
 
         // Se não tem cache ou storage bloqueado, mostra o loading e vai pra rede
         mostrar_skeleton(true);
@@ -1259,12 +1273,20 @@ function carregar_produtos() {
                     lsSetJSON(STORAGE_KEY_PRODUTOS, data);
                 }
 
-                ALL_PRODUTOS = ativados;
-                carregar_categorias(ativados);
-                renderizarFiltrosAtributos(ativados);
-                mostrar_produtos(ativados);
-                aplicarRouteSePronto_();
-            }
+ALL_PRODUTOS = ativados;
+carregar_categorias(ativados);
+renderizarFiltrosAtributos(ativados);
+
+// ✅ Se existe rota na URL, NÃO mostre o catálogo geral por cima.
+// Reaplica a rota agora que chegou dado novo.
+if (temRouteAtiva_()) {
+  ROUTE_APLICADA = false;
+  ROUTE_PENDING = parseRouteFromUrl_();
+  aplicarRouteSePronto_();
+} else {
+  mostrar_produtos(ativados);
+}
+
 
         })
         .catch(err => {
