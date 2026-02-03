@@ -902,7 +902,82 @@ if (temHierarquia) {
 // ✅ também renderiza menu mobile no offcanvas (não mexe no desktop)
 renderMenuMobileOffcanvas_(produtos);
 
+  // ✅ Barra top no desktop (somente PAI)
+renderMenuDesktopTop_(produtos);
+
 }
+
+// ===============================
+// ✅ MENU TOP DESKTOP (somente categorias PAI)
+// ===============================
+function getCategoriasPai_(produtos) {
+  const sep = (CONFIG_LOJA.SeparadorCategoria || ">").toString();
+  const set = new Set();
+
+  (produtos || []).forEach(p => {
+    const raw = (p.Categoria || "").toString().trim();
+    if (!raw) return;
+    const pai = raw.split(sep)[0]?.trim();
+    if (pai) set.add(pai);
+  });
+
+  return Array.from(set).sort((a,b) => a.localeCompare(b, 'pt-BR'));
+}
+
+function renderMenuDesktopTop_(produtos) {
+  const host = document.getElementById("catsDesktopBar");
+  if (!host) return;
+
+  // só desktop (segurança extra)
+  if (window.innerWidth < 768) {
+    host.innerHTML = "";
+    return;
+  }
+
+  const pais = getCategoriasPai_(produtos);
+  if (!pais.length) { host.innerHTML = ""; return; }
+
+  // botão "Ver Todos"
+  let html = `
+    <a href="#" class="cat-top-btn" data-cat="" onclick="limpar_filtros(); return false;">Ver Todos</a>
+  `;
+
+  pais.forEach(pai => {
+    html += `
+      <a href="#" class="cat-top-btn" data-cat="${escapeHtml_(pai)}"
+         onclick="mostrar_produtos_por_departamento('${escapeJs_(pai)}','${escapeJs_((CONFIG_LOJA.SeparadorCategoria||'>').toString())}'); return false;">
+        ${escapeHtml_(pai)}
+      </a>
+    `;
+  });
+
+  host.innerHTML = html;
+
+  // tenta marcar "ativo" olhando o ?cat=...
+  try {
+    const u = new URL(window.location.href);
+    const cat = (u.searchParams.get("cat") || "").trim();
+    if (!cat) return;
+
+    const sep = (CONFIG_LOJA.SeparadorCategoria || ">").toString();
+    const paiAtivo = cat.split(sep)[0]?.trim();
+
+    host.querySelectorAll(".cat-top-btn").forEach(a => a.classList.remove("active"));
+    const el = host.querySelector(`.cat-top-btn[data-cat="${CSS.escape(paiAtivo)}"]`);
+    if (el) el.classList.add("active");
+  } catch(e) {}
+}
+
+// helper para evitar HTML injection no texto
+function escapeHtml_(s){
+  return String(s || "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#39;");
+}
+
 
 // ===== MENU HIERÁRQUICO (adição segura) =====
 function buildCategoryTree_(produtos, separador) {
@@ -3249,4 +3324,13 @@ if (elProd) {
       aplicarRouteSePronto_();
     });
 
+});
+
+// ✅ AJUSTE: re-render do menu/topo ao redimensionar (fora do DOMContentLoaded)
+window.addEventListener("resize", () => {
+  try {
+    renderMenuDesktopTop_(obterProdutosFonte_());
+  } catch (e) {
+    // silencioso pra não quebrar se ainda não carregou produtos
+  }
 });
