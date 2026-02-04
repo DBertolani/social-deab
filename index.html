@@ -861,25 +861,78 @@ footer.site-footer a:hover {
       </div>
 
     </div>
+    
           <!-- RODAPÉ -->
-          <div class="footer-bottom">
-            <div class="row align-items-center">
-              <div class="col-md-6 text-md-start mb-2 mb-md-0 text-center text-md-start">
-                <p class="mb-0">
-                  &copy; <span id="ano_atual">2026</span> <strong id="footer_copy_nome">Loja</strong>. 
-                  Todos os direitos reservados.
-                </p>
-              </div>
-              
-              <div class="col-md-6 text-md-end text-center">
-                <a href="https://wa.me/5527996962395" target="_blank" class="selo-dev text-decoration-none text-muted small">
-                  <i class="bi bi-code-slash me-1"></i> Tecnologia: <strong>Danilo Bertolani</strong>
-                </a>
+          <footer class="bg-light text-muted mt-5 pt-5 border-top">
+            <div class="container">
+              <div class="row">
+                
+                <div class="col-lg-4 col-md-6 mb-4 mb-md-0">
+                  <h5 class="text-uppercase fw-bold mb-3 text-dark">
+                    <i class="bi bi-shop me-2"></i><span id="footer_nome_loja">Loja</span>
+                  </h5>
+                  <p id="footer_descricao" class="small">
+                    Carregando informações...
+                  </p>
+                  
+                  <div class="mt-3">
+                    <a id="footer_insta" href="#" class="btn btn-outline-secondary btn-sm rounded-circle me-2 d-none" target="_blank"><i class="bi bi-instagram"></i></a>
+                    <a id="footer_face" href="#" class="btn btn-outline-secondary btn-sm rounded-circle d-none" target="_blank"><i class="bi bi-facebook"></i></a>
+                  </div>
+                </div>
+          
+                <div class="col-lg-3 col-md-6 mb-4 mb-md-0">
+                  <h6 class="text-uppercase fw-bold mb-3 text-dark">Links Rápidos</h6>
+                  <ul class="list-unstyled">
+                    <li class="mb-2"><a href="#" class="text-decoration-none text-muted" onclick="limpar_filtros()">Ver Todos os Produtos</a></li>
+                    <li class="mb-2"><a href="#" class="text-decoration-none text-muted" onclick="window.scrollTo({top:0, behavior:'smooth'})">Voltar ao Topo</a></li>
+                    <li class="mb-2"><a href="#" class="text-decoration-none text-muted" onclick="abrirIdentificacao()">Meus Pedidos</a></li>
+                  </ul>
+                </div>
+          
+                <div class="col-lg-5 col-md-12 mb-4 mb-md-0">
+                  <h6 class="text-uppercase fw-bold mb-3 text-dark">Atendimento</h6>
+                  
+                  <p class="mb-2"><i class="bi bi-geo-alt me-2 text-primary"></i> <span id="footer_endereco">...</span></p>
+                  <p class="mb-2"><i class="bi bi-envelope me-2 text-primary"></i> <span id="footer_email">...</span></p>
+                  
+                  <p class="mb-2">
+                      <i class="bi bi-whatsapp me-2 text-success"></i>
+                      <a id="footer_whats" href="#" target="_blank" class="text-decoration-none text-dark fw-bold">
+                          <span id="footer_tel">...</span>
+                      </a>
+                  </p>
+          
+                  <p id="box_horario" class="d-none small text-muted">
+                      <i class="bi bi-clock me-2"></i> <span id="footer_horario"></span>
+                  </p>
+          
+                  <p id="footer_cnpj" class="small text-muted mt-3 mb-0" style="font-size: 0.8rem;"></p>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      </footer>
+          
+            <div class="bg-dark text-light py-3 mt-4">
+              <div class="container">
+                <div class="row align-items-center">
+                  
+                  <div class="col-md-6 text-center text-md-start mb-2 mb-md-0">
+                    <p class="mb-0 small">
+                      &copy; <span id="ano_atual">2026</span> <strong id="footer_copy_nome">Loja</strong>. 
+                      Todos os direitos reservados.
+                    </p>
+                  </div>
+                  
+                  <div class="col-md-6 text-center text-md-end">
+                    <a href="https://wa.me/5527996962395" target="_blank" class="text-decoration-none text-light small opacity-75 hover-opacity-100">
+                      <i class="bi bi-code-slash me-1"></i> Tecnologia: <strong>Danilo Bertolani</strong>
+                    </a>
+                  </div>
+          
+                </div>
+              </div>
+            </div>
+          </footer>
 
   
 <!-- 1) Dependências -->
