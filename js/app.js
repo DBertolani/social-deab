@@ -872,6 +872,65 @@ function aplicar_config() {
             btnExistente.remove();
         }
     }
+
+// ✅ 6. PREENCHIMENTO DO RODAPÉ (DADOS DO CLIENTE) ---
+
+    // Identidade da Loja
+    $('#footer_nome_loja, #footer_copy_nome').text(CONFIG_LOJA.NomeDaLoja || CONFIG_LOJA.NomeDoSite || "Loja Virtual");
+    
+    // Resumo da descrição (limita a 140 caracteres para não quebrar o layout)
+    var descRodape = CONFIG_LOJA.DescricaoSEO ? String(CONFIG_LOJA.DescricaoSEO) : "";
+    if (descRodape.length > 140) descRodape = descRodape.substring(0, 140) + "...";
+    $('#footer_descricao').text(descRodape);
+
+    // E-mail
+    $('#footer_email').text(CONFIG_LOJA.EmailLoja || "Contato via Site");
+
+    // WhatsApp Formatado (Visualmente bonito)
+    if (CONFIG_LOJA.NumeroWhatsapp) {
+        let w = String(CONFIG_LOJA.NumeroWhatsapp).replace(/\D/g, ''); 
+        let wFmt = w;
+        
+        // Tenta formatar (XX) XXXXX-XXXX
+        if (w.length >= 10) {
+             let local = w.startsWith('55') && w.length > 11 ? w.substring(2) : w;
+             wFmt = local.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
+        }
+        
+        $('#footer_tel').text(wFmt);
+        $('#footer_whats').attr('href', `https://wa.me/${w}`);
+    }
+
+    // Redes Sociais (Só aparecem se tiver na planilha)
+    if (CONFIG_LOJA.Instagram && CONFIG_LOJA.Instagram.length > 5) {
+        $('#footer_insta').attr('href', CONFIG_LOJA.Instagram).removeClass('d-none');
+    }
+    if (CONFIG_LOJA.Facebook && CONFIG_LOJA.Facebook.length > 5) {
+        $('#footer_face').attr('href', CONFIG_LOJA.Facebook).removeClass('d-none');
+    }
+
+    // Dados Legais (CNPJ e Endereço)
+    if (CONFIG_LOJA.CNPJ) {
+        $('#footer_cnpj').text("CNPJ: " + CONFIG_LOJA.CNPJ).show();
+    } else {
+        $('#footer_cnpj').hide();
+    }
+
+    if (CONFIG_LOJA.EnderecoLoja) {
+        $('#footer_endereco').text(CONFIG_LOJA.EnderecoLoja).show();
+    } else {
+        // Se o cliente não colocar endereço, mostramos algo genérico para não ficar vazio
+        $('#footer_endereco').text("Enviamos para todo o Brasil").show();
+    }
+
+    if (CONFIG_LOJA.HorarioAtendimento) {
+        $('#footer_horario').text(CONFIG_LOJA.HorarioAtendimento);
+        $('#box_horario').removeClass('d-none');
+    }
+
+    // Ano Atual Automático
+    $('#ano_atual').text(new Date().getFullYear());
+
 } // Fechamento da função aplicar_config
 
 // --- 2. MENU E CATEGORIAS ---
