@@ -947,7 +947,74 @@ function aplicar_config() {
     // Ano Atual Automático
     $('#ano_atual').text(new Date().getFullYear());
 
+  // ✅ 7. RODAPÉ: MENU "INFORMAÇÕES" (Trocas, Privacidade, Entrega, Pagamentos...)
+(function preencherInfoSiteRodape_() {
+  const col = document.getElementById("col_info_site");
+  const ul  = document.getElementById("lista_info_site");
+  const modalEl = document.getElementById("modalInfoSite");
+
+  // Se não existir no HTML, não faz nada (não quebra o site)
+  if (!col || !ul || !modalEl) return;
+
+  // Mapeia os campos da CONFIG para itens do menu
+  const itens = [
+    { key: "TrocasDevolucoesHTML",  titulo: "Trocas e Devoluções" },
+    { key: "PoliticaPrivacidadeHTML", titulo: "Política de Privacidade" },
+    { key: "TermosUsoHTML",         titulo: "Termos de Uso" },
+    { key: "EnvioPrazosHTML",       titulo: "Entrega e Prazos" },
+    { key: "PagamentosHTML",        titulo: "Pagamentos" },
+  ];
+
+  // Filtra só os que têm conteúdo
+  const ativos = itens.filter(it => {
+    const html = String(CONFIG_LOJA[it.key] || "").trim();
+    // aceita HTML vazio "", ou "<br>" etc como vazio
+    const limpo = html.replace(/<[^>]*>/g, "").trim();
+    return limpo.length > 0;
+  });
+
+  // Se não tiver nenhum, esconde a coluna
+  if (!ativos.length) {
+    col.style.display = "none";
+    ul.innerHTML = "";
+    return;
+  }
+
+  // Monta lista
+  ul.innerHTML = ativos.map(it => `
+    <li class="mb-2">
+      <a href="#" class="text-decoration-none text-muted"
+         data-info-key="${it.key}"
+         onclick="abrirInfoSiteModal_(event, '${it.key}', '${escapeJs_(it.titulo)}')">
+        ${escapeHtml_(it.titulo)}
+      </a>
+    </li>
+  `).join("");
+
+  // Mostra coluna
+  col.style.display = "block";
+})();
+
+
 } // Fechamento da função aplicar_config
+
+
+
+// ✅ Abre o modal do rodapé (Informações)
+function abrirInfoSiteModal_(ev, key, titulo) {
+  try { if (ev) ev.preventDefault(); } catch(e) {}
+
+  const tEl = document.getElementById("modalInfoSiteTitulo");
+  const cEl = document.getElementById("modalInfoSiteConteudo");
+
+  const html = String(CONFIG_LOJA[key] || "").trim();
+
+  if (tEl) tEl.innerText = titulo || "Informações";
+  if (cEl) cEl.innerHTML = html || "<span class='text-muted'>Conteúdo não disponível.</span>";
+
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("modalInfoSite")).show();
+}
+
 
 // --- 2. MENU E CATEGORIAS ---
 function carregar_categorias(produtos) {
