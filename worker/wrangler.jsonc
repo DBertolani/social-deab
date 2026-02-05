@@ -1,0 +1,5 @@
+{
+  "name": "social-seo-handler",
+  "main": "worker.js",
+  "compatibility_date": "2026-02-05"
+}
