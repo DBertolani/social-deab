@@ -1,6 +1,5 @@
 name: Deploy Worker
 
-
 on:
   push:
     branches: ["main"]
@@ -11,11 +10,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ✅ Garante Node LTS e ambiente npm ok
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # ✅ Deploy usando wrangler action com versão fixa
       - name: Deploy to Cloudflare Workers (auto ASSET_REF)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           workingDirectory: "worker"
-          command: |
-            wrangler deploy --var ASSET_REF:${{ github.sha }} --var WORKER_BUILD:${{ github.sha }}
+          wranglerVersion: "3.100.0"
+          command: >
+            deploy
+            --var ASSET_REF:${{ github.sha }}
+            --var WORKER_BUILD:${{ github.sha }}
