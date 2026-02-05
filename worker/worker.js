@@ -3,12 +3,12 @@ export default {
     const url = new URL(request.url);
     const productId = url.searchParams.get("produto");
 
-    // --- DEV / BYPASS ---
-    // Use ?dev=1 ou ?nocache=1 na URL para forçar bypass
-    const devBypass =
-      url.searchParams.has("dev") ||
-      url.searchParams.has("nocache") ||
-      (request.headers.get("cache-control") || "").includes("no-cache");
+// --- DEV / BYPASS ---
+// Use ?dev=1 ou ?nocache=1 na URL para forçar bypass
+const devBypass =
+  url.searchParams.has("dev") ||
+  url.searchParams.has("nocache");
+
 
     // Versão do build (troque quando publicar)
     const BUILD = (env && env.WORKER_BUILD) ? String(env.WORKER_BUILD) : "v9";
