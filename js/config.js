@@ -7,4 +7,4 @@ window.CONFIG.SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwePrOqUhcq6
 window.CONFIG.MOEDA = "BRL";
 
 // Versão do front (usada para cache-busting do app.js)
-window.APP_VERSION = "2026-01-20_v6";
+window.APP_VERSION = "2026-02-05_v9_menu_desktop";
