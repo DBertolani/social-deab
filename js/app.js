@@ -1,5 +1,5 @@
 // --- CONTROLE DE VERSÃO E CACHE (MODO SEGURO) ---
-const VERSAO_SISTEMA = "2026-02-03_v7_fix-cat-pai";
+const VERSAO_SISTEMA = "2026-02-05_v9_menu_desktop";
 const STORAGE_KEY_PRODUTOS = "produtos_cache";
 
 
