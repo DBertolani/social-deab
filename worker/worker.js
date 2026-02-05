@@ -3,43 +3,33 @@ export default {
     const url = new URL(request.url);
     const productId = url.searchParams.get("produto");
 
-// --- DEV / BYPASS ---
-// Use ?dev=1 ou ?nocache=1 na URL para forçar bypass
-const devBypass =
-  url.searchParams.has("dev") ||
-  url.searchParams.has("nocache");
+    // --- DEV / BYPASS ---
+    const devBypass =
+      url.searchParams.has("dev") ||
+      url.searchParams.has("nocache");
 
-
-    // Versão do build (troque quando publicar)
     const BUILD = (env && env.WORKER_BUILD) ? String(env.WORKER_BUILD) : "v9";
 
-    // Apps Script (sua API)
     const BASE_SCRIPT_URL =
       "https://script.google.com/macros/s/AKfycbwePrOqUhcq6m4GPlrBi5MQdYwcZt6NLD0dyL_Yd6bofbdRaXHdMtsvIZVxXkLIYbnnMA/exec";
 
-    /**
-     * ✅ CONFIGURAÇÃO DE ORIGEM
-     */
     const ORIGIN_HTML_BASE = "https://raw.githubusercontent.com/DBertolani/social-deab/main/";
     const ASSET_REF = (env && env.ASSET_REF) ? String(env.ASSET_REF) : "43914a1";
     const ORIGIN_ASSET_BASE = `https://cdn.jsdelivr.net/gh/DBertolani/social-deab@${ASSET_REF}/`;
-    
-    
-
-
 
     // --- Detecta bots/crawlers ---
     const ua = request.headers.get("user-agent") || "";
     const isBot =
       /facebookexternalhit|Facebot|WhatsApp|Twitterbot|Slackbot|Discordbot|TelegramBot|LinkedInBot/i.test(ua);
 
+    // ✅ Forçar modo bot para testar no navegador: ?bot=1
+    const isBotFinal = isBot || url.searchParams.has("bot");
+
     // ------------------ HELPERS: ORIGIN/ASSETS ------------------
     function originHtmlUrlFromPath(pathname) {
       let path = pathname || "/";
       if (path === "/" || path === "") path = "/index.html";
       const filePath = path.replace(/^\/+/, "");
-
-      // 🔥 CACHE BUSTER: Adiciona data/hora para forçar o GitHub a entregar versão nova
       const cacheBuster = Date.now();
       return new URL(filePath, ORIGIN_HTML_BASE).toString() + `?v=${cacheBuster}`;
     }
@@ -73,12 +63,25 @@ const devBypass =
     }
 
     function rewriteAssetsToOrigin(html) {
-      // Reescreve SOMENTE assets (mantém navegação no seu domínio)
       html = html.replace(/href=(["'])css\//gi, `href=$1${ORIGIN_ASSET_BASE}css/`);
       html = html.replace(/src=(["'])js\//gi, `src=$1${ORIGIN_ASSET_BASE}js/`);
       html = html.replace(/src=(["'])p\//gi, `src=$1${ORIGIN_ASSET_BASE}p/`);
       html = html.replace(/href=(["'])p\//gi, `href=$1${ORIGIN_ASSET_BASE}p/`);
       html = html.replace(/(href|src)=(["'])config\.json/gi, `$1=$2${ORIGIN_ASSET_BASE}config.json`);
+      return html;
+    }
+
+    // ✅ remove OG fixo do index.html (senão WhatsApp pode pegar o “primeiro”)
+    function stripSeoMeta(html) {
+      // remove qualquer <title>...</title>
+      html = html.replace(/<title\b[^>]*>[\s\S]*?<\/title>/gi, "");
+
+      // remove <meta name="description" ...>
+      html = html.replace(/<meta\b[^>]*\bname=(["'])description\1[^>]*>/gi, "");
+
+      // remove qualquer meta OG existente (og:*)
+      html = html.replace(/<meta\b[^>]*\bproperty=(["'])og:[^"']+\1[^>]*>/gi, "");
+
       return html;
     }
 
@@ -135,7 +138,6 @@ const devBypass =
       return s;
     }
 
-    // CORRIGIDO AQUI: A função que estava dando erro
     function escapeHtmlAttr(s) {
       return String(s ?? "")
         .replace(/&/g, "&amp;")
@@ -150,7 +152,6 @@ const devBypass =
       if (isAssetRequest(url.pathname)) {
         const assetUrl = originAssetUrlFromPath(url.pathname);
 
-        // ✅ critical: identifique de forma direta
         const isCritical =
           url.pathname === "/js/app.js" ||
           url.pathname === "/js/config.js";
@@ -165,8 +166,6 @@ const devBypass =
         });
 
         const headers = new Headers(resp.headers);
-
-        // ✅ headers de debug (para você ver no DevTools)
         headers.set("x-worker-build", BUILD);
         headers.set("x-dev-bypass", devBypass ? "1" : "0");
         headers.set("x-upstream", "jsdelivr");
@@ -182,7 +181,7 @@ const devBypass =
         return new Response(resp.body, { status: resp.status, headers });
       }
 
-      // 2) HTML: GitHub RAW (Com Cache Buster e sem cache no Cloudflare)
+      // 2) HTML: GitHub RAW (sem cache no Cloudflare)
       const htmlUrl = originHtmlUrlFromPath(url.pathname);
 
       const originalResponse = await fetch(htmlUrl, {
@@ -191,10 +190,7 @@ const devBypass =
           "cache-control": "no-cache",
           "pragma": "no-cache"
         },
-        cf: {
-          cacheTtl: 0,
-          cacheEverything: false
-        }
+        cf: { cacheTtl: 0, cacheEverything: false }
       });
 
       let html = originalResponse.ok
@@ -203,21 +199,20 @@ const devBypass =
 
       html = rewriteAssetsToOrigin(html);
 
-      // 3) Para humanos: HTML puro (sem cache no navegador)
-      if (!isBot) {
+      // 3) Humanos: entrega HTML normal
+      if (!isBotFinal) {
         return new Response(html, {
           headers: {
             "content-type": "text/html;charset=UTF-8",
             "cache-control": "no-store, no-cache, must-revalidate, max-age=0",
-            // debug
             "x-worker-build": BUILD,
             "x-dev-bypass": devBypass ? "1" : "0",
           },
         });
       }
 
-      // 4) Para bots: OG dinâmico
-      let dados = {};
+      // 4) Bots: OG dinâmico (busca config + produto se necessário)
+      let dadosProd = {};
       let dadosCfg = {};
 
       try {
@@ -226,92 +221,68 @@ const devBypass =
             fetch(`${BASE_SCRIPT_URL}?rota=produtos`, { redirect: "follow" }),
             fetch(`${BASE_SCRIPT_URL}?rota=config`, { redirect: "follow" }),
           ]);
-
-          try { dados = await rProd.json(); } catch (e) { dados = {}; }
+          try { dadosProd = await rProd.json(); } catch (e) { dadosProd = {}; }
           try { dadosCfg = await rCfg.json(); } catch (e) { dadosCfg = {}; }
         } else {
           const rCfg = await fetch(`${BASE_SCRIPT_URL}?rota=config`, { redirect: "follow" });
-          try { dados = await rCfg.json(); } catch (e) { dados = {}; }
-          dadosCfg = dados;
+          try { dadosCfg = await rCfg.json(); } catch (e) { dadosCfg = {}; }
         }
       } catch (e) {
-        dados = {};
+        dadosProd = {};
         dadosCfg = {};
       }
 
+      const cfg = buildConfig(dadosCfg);
+
+      // ✅ antes de injetar, remove OG/title/description do index.html
+      html = stripSeoMeta(html);
 
       let metaTags = "";
 
       if (productId) {
-        // --- OG PRODUTO ---
-        const produto = Array.isArray(dados)
-          ? dados.find((p) => String(p.ID || p.id).trim() === String(productId).trim())
+        const produto = Array.isArray(dadosProd)
+          ? dadosProd.find((p) => String(p.ID || p.id).trim() === String(productId).trim())
           : null;
 
         if (produto) {
-          const cfg = buildConfig(dadosCfg);
           const nomeLoja = cfgGet(cfg, ["NomeDoSite", "NomeDaLoja", "TituloAba", "Titulo"], "Loja Online");
           const titulo = `${produto.Produto} - ${nomeLoja}`;
-
-          const precoFormatado = produto.Preço;
+          const precoFormatado = produto.Preço || "";
           let imagem = produto.ImagemPrincipal || "";
 
-          if (imagem.includes("drive.google.com")) {
-            const id = extrairDriveId(imagem);
-            if (id) imagem = `https://lh3.googleusercontent.com/d/${id}=w1200`;
+          imagem = driveParaOg(imagem);
+
+          // fallback se imagem vier vazia
+          if (!imagem) {
+            imagem = driveParaOg(cfgGet(cfg, ["LogoDoSite", "Logo", "OgImage", "ImagemOG", "LogoUrl"], ""));
           }
 
           metaTags = `
             <title>${escapeHtmlAttr(titulo)}</title>
-            <meta property="og:title" content="${escapeHtmlAttr(`${titulo} | ${precoFormatado}`)}">
+            <meta name="description" content="${escapeHtmlAttr(`Preço: ${precoFormatado}`)}">
+            <meta property="og:title" content="${escapeHtmlAttr(`${titulo}${precoFormatado ? " | " + precoFormatado : ""}`)}">
             <meta property="og:description" content="${escapeHtmlAttr("Confira detalhes e garanta o seu.")}">
-            <meta property="og:image" content="${escapeHtmlAttr(imagem)}">
-            <meta property="og:image:width" content="1200">
-            <meta property="og:image:height" content="1200">
+            ${imagem ? `<meta property="og:image" content="${escapeHtmlAttr(imagem)}">` : ""}
             <meta property="og:type" content="product">
             <meta property="og:url" content="${escapeHtmlAttr(url.href)}">
           `;
         }
       } else {
-        // --- OG HOME (CONFIG AGNÓSTICO) ---
-        const cfg = buildConfig(dadosCfg);
-      
-
-        const tituloHome = cfgGet(
-          cfg,
-          ["TituloAba", "Titulo", "NomeDoSite", "NomeDaLoja"],
-          "Loja Online"
-        );
-
-        const descHome = cfgGet(
-          cfg,
-          ["DescricaoSEO", "Descricao", "DescricaoAba"],
-          "Confira nosso catálogo."
-        );
-
-        let logoHome = cfgGet(
-          cfg,
-          ["LogoDoSite", "Logo", "OgImage", "ImagemOG", "Imagem", "LogoUrl"],
-          ""
-        );
-
-        logoHome = driveParaOg(logoHome);
+        const tituloHome = cfgGet(cfg, ["TituloAba", "Titulo", "NomeDoSite", "NomeDaLoja"], "Loja Online");
+        const descHome = cfgGet(cfg, ["DescricaoSEO", "Descricao", "DescricaoAba"], "Confira nosso catálogo.");
+        let logoHome = driveParaOg(cfgGet(cfg, ["LogoDoSite", "Logo", "OgImage", "ImagemOG", "Imagem", "LogoUrl"], ""));
 
         metaTags = `
           <title>${escapeHtmlAttr(tituloHome)}</title>
           <meta name="description" content="${escapeHtmlAttr(descHome)}">
           <meta property="og:title" content="${escapeHtmlAttr(tituloHome)}">
           <meta property="og:description" content="${escapeHtmlAttr(descHome)}">
-          <meta property="og:image" content="${escapeHtmlAttr(logoHome)}">
-          <meta property="og:image:secure_url" content="${escapeHtmlAttr(logoHome)}">
-          <meta property="og:image:width" content="1200">
-          <meta property="og:image:height" content="1200">
+          ${logoHome ? `<meta property="og:image" content="${escapeHtmlAttr(logoHome)}">` : ""}
           <meta property="og:type" content="website">
           <meta property="og:url" content="${escapeHtmlAttr(url.href)}">
         `;
       }
 
-      html = html.replace(/<title>.*?<\/title>/gi, "");
       if (html.includes("<head>")) {
         html = html.replace("<head>", "<head>" + metaTags);
       } else {
@@ -322,19 +293,15 @@ const devBypass =
         headers: {
           "content-type": "text/html;charset=UTF-8",
           "cache-control": "public, max-age=300",
-          // debug
           "x-worker-build": BUILD,
           "x-dev-bypass": devBypass ? "1" : "0",
         },
       });
+
     } catch (e) {
-      // fallback seguro
       return new Response(
         "<html><head><title>Erro</title></head><body>Erro ao processar.</body></html>",
-        {
-          headers: { "content-type": "text/html;charset=UTF-8" },
-          status: 200,
-        }
+        { headers: { "content-type": "text/html;charset=UTF-8" }, status: 200 }
       );
     }
   },
