@@ -306,6 +306,16 @@ function setProdutoToUrl_(id, mode) {
   setUrlParams_({ produto: String(id || "").trim() }, mode || "push");
 }
 
+function fecharModalProdutoSeAberto_() {
+  try {
+    const el = document.getElementById('modalProduto');
+    if (!el) return;
+    const inst = bootstrap.Modal.getInstance(el);
+    if (inst) inst.hide();
+  } catch (e) {}
+}
+
+
 function aplicarRouteSePronto_() {
   if (ROUTE_APLICADA) return;
 
@@ -320,6 +330,12 @@ function aplicarRouteSePronto_() {
 
   const produtoId = (ROUTE_PENDING.produtoId || "").trim();
   const catParam = (ROUTE_PENDING.cat || "").trim();
+
+    // ✅ Se NÃO tem produto na URL, garante que o modal não fique aberto
+  if (!produtoId) {
+    fecharModalProdutoSeAberto_();
+  }
+
 
   // ✅ NOVO: se veio categoria na URL, limpa busca e atributos
   // (senão a busca/atributos podem "sobrescrever" e mostrar o catálogo geral)
@@ -3336,6 +3352,8 @@ function abrirModalMeusPedidos(cpf) {
 document.addEventListener("DOMContentLoaded", function () {
     ROUTE_PENDING = parseRouteFromUrl_();
 
+  
+    limparHashDaUrl_();
     carregar_config();
     atualizar_carrinho();
 
@@ -3444,11 +3462,18 @@ if (elProd) {
 }
 
     // ✅ NOVO: Back/Forward do navegador (voltar/avançar)
-    window.addEventListener("popstate", () => {
-      ROUTE_APLICADA = false;
-      ROUTE_PENDING = parseRouteFromUrl_();
-      aplicarRouteSePronto_();
-    });
+      window.addEventListener("popstate", () => {
+        ROUTE_APLICADA = false;
+        ROUTE_PENDING = parseRouteFromUrl_();
+      
+        // ✅ Se tirou o produto da URL, fecha o modal imediatamente
+        if (!String(ROUTE_PENDING.produtoId || "").trim()) {
+          fecharModalProdutoSeAberto_();
+        }
+      
+        aplicarRouteSePronto_();
+      });
+
 
 });
 
