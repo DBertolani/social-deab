@@ -981,15 +981,30 @@ function aplicar_config() {
   }
 
   // Monta lista
-  ul.innerHTML = ativos.map(it => `
-    <li class="mb-2">
-      <a href="#" class="text-decoration-none text-muted"
-         data-info-key="${it.key}"
-         onclick="abrirInfoSiteModal_(event, '${it.key}', '${escapeJs_(it.titulo)}')">
-        ${escapeHtml_(it.titulo)}
-      </a>
-    </li>
-  `).join("");
+  // ícones por item (Bootstrap Icons)
+  const icones = {
+    TrocasDevolucoesHTML: "bi-arrow-repeat",
+    PoliticaPrivacidadeHTML: "bi-shield-lock",
+    TermosUsoHTML: "bi-file-earmark-text",
+    EnvioPrazosHTML: "bi-truck",
+    PagamentosHTML: "bi-credit-card"
+  };
+
+  // Monta lista COM ÍCONES
+  ul.innerHTML = ativos.map(it => {
+    const ico = icones[it.key] || "bi-info-circle";
+    return `
+      <li class="mb-2">
+        <a href="#" class="text-decoration-none text-muted d-flex align-items-center gap-2"
+           data-info-key="${it.key}"
+           onclick="abrirInfoSiteModal_(event, '${it.key}', '${escapeJs_(it.titulo)}')">
+          <i class="bi ${ico}" aria-hidden="true"></i>
+          <span>${escapeHtml_(it.titulo)}</span>
+        </a>
+      </li>
+    `;
+  }).join("");
+
 
   // Mostra coluna
   col.style.display = "block";
