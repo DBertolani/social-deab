@@ -6,7 +6,9 @@ export default {
     // --- DEV / BYPASS ---
     const devBypass =
       url.searchParams.has("dev") ||
-      url.searchParams.has("nocache");
+      url.searchParams.has("nocache") ||
+      (request.headers.get("cache-control") || "").includes("no-cache");
+
 
     const BUILD = (env && env.WORKER_BUILD) ? String(env.WORKER_BUILD) : "v9";
 
@@ -146,6 +148,29 @@ export default {
         .replace(/"/g, "&quot;");
     }
 
+
+    function formatarPrecoBR(v) {
+  if (v == null) return "";
+  let s = String(v).trim();
+
+  // remove "R$" caso exista
+  s = s.replace(/[Rr]\$\s*/g, "").trim();
+
+  // normaliza separadores: aceita 129.9, 129,9, 1.299,90 etc
+  if (s.includes(",") && s.includes(".")) {
+    // assume "." milhar e "," decimal
+    s = s.replace(/\./g, "").replace(",", ".");
+  } else if (s.includes(",")) {
+    s = s.replace(",", ".");
+  }
+
+  const n = Number(s);
+  if (!Number.isFinite(n)) return String(v);
+
+  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+
     // ------------------ FLUXO PRINCIPAL ------------------
     try {
       // 1) Assets: proxy do jsDelivr
@@ -247,7 +272,10 @@ export default {
         if (produto) {
           const nomeLoja = cfgGet(cfg, ["NomeDoSite", "NomeDaLoja", "TituloAba", "Titulo"], "Loja Online");
           const titulo = `${produto.Produto} - ${nomeLoja}`;
-          const precoFormatado = produto.Preço || "";
+          
+          const precoRaw = produto.Preço || produto.preco || produto.Preco || "";
+          const precoBR = formatarPrecoBR(precoRaw);
+
           let imagem = produto.ImagemPrincipal || "";
 
           imagem = driveParaOg(imagem);
@@ -257,17 +285,47 @@ export default {
             imagem = driveParaOg(cfgGet(cfg, ["LogoDoSite", "Logo", "OgImage", "ImagemOG", "LogoUrl"], ""));
           }
 
+          const descRaw =
+            produto.Descricao ||
+            produto.Descrição ||
+            produto.descricao ||
+            produto.descricao_curta ||
+            produto.DescricaoCurta ||
+            produto.Detalhes ||
+            "";
+          
+          const desc = String(descRaw).trim();
+          const descLimitada = desc.length > 200 ? (desc.slice(0, 197) + "...") : desc;
+          
           metaTags = `
             <title>${escapeHtmlAttr(titulo)}</title>
-            <meta name="description" content="${escapeHtmlAttr(`Preço: ${precoFormatado}`)}">
-            <meta property="og:title" content="${escapeHtmlAttr(`${titulo}${precoFormatado ? " | " + precoFormatado : ""}`)}">
-            <meta property="og:description" content="${escapeHtmlAttr("Confira detalhes e garanta o seu.")}">
+          
+            <meta name="description" content="${escapeHtmlAttr(descLimitada || (precoBR ? `Preço: ${precoBR}` : "Confira detalhes e garanta o seu."))}">
+            <meta property="og:title" content="${escapeHtmlAttr(`${titulo}${precoBR ? " | " + precoBR : ""}`)}">
+            <meta property="og:description" content="${escapeHtmlAttr(descLimitada || "Confira detalhes e garanta o seu.")}">
             ${imagem ? `<meta property="og:image" content="${escapeHtmlAttr(imagem)}">` : ""}
             <meta property="og:type" content="product">
             <meta property="og:url" content="${escapeHtmlAttr(url.href)}">
           `;
+        } else {
+          // ✅ AQUI: else do if (produto) -> fallback quando ?produto=... NÃO achou produto
+          const tituloHome = cfgGet(cfg, ["TituloAba", "Titulo", "NomeDoSite", "NomeDaLoja"], "Loja Online");
+          const descHome = cfgGet(cfg, ["DescricaoSEO", "Descricao", "DescricaoAba"], "Confira nosso catálogo.");
+          let logoHome = driveParaOg(cfgGet(cfg, ["LogoDoSite", "Logo", "OgImage", "ImagemOG", "Imagem", "LogoUrl"], ""));
+
+          metaTags = `
+            <title>${escapeHtmlAttr(tituloHome)}</title>
+            <meta name="description" content="${escapeHtmlAttr(descHome)}">
+            <meta property="og:title" content="${escapeHtmlAttr(tituloHome)}">
+            <meta property="og:description" content="${escapeHtmlAttr(descHome)}">
+            ${logoHome ? `<meta property="og:image" content="${escapeHtmlAttr(logoHome)}">` : ""}
+            <meta property="og:type" content="website">
+            <meta property="og:url" content="${escapeHtmlAttr(url.href)}">
+          `;
         }
+
       } else {
+        // ✅ este else aqui continua sendo o HOME normal (quando NÃO existe ?produto=)
         const tituloHome = cfgGet(cfg, ["TituloAba", "Titulo", "NomeDoSite", "NomeDaLoja"], "Loja Online");
         const descHome = cfgGet(cfg, ["DescricaoSEO", "Descricao", "DescricaoAba"], "Confira nosso catálogo.");
         let logoHome = driveParaOg(cfgGet(cfg, ["LogoDoSite", "Logo", "OgImage", "ImagemOG", "Imagem", "LogoUrl"], ""));
@@ -282,6 +340,7 @@ export default {
           <meta property="og:url" content="${escapeHtmlAttr(url.href)}">
         `;
       }
+
 
       if (html.includes("<head>")) {
         html = html.replace("<head>", "<head>" + metaTags);
