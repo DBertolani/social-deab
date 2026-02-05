@@ -997,46 +997,99 @@ function getCategoriasPai_(produtos) {
   return Array.from(set).sort((a,b) => a.localeCompare(b, 'pt-BR'));
 }
 
+// ===============================
+// ✅ MENU TOP DESKTOP (COM DROPDOWN PARA SUBCATEGORIAS)
+// ===============================
 function renderMenuDesktopTop_(produtos) {
   const host = document.getElementById("catsDesktopBar");
   if (!host) return;
 
-  // só desktop (segurança extra)
+  // Segurança: só roda em desktop
   if (window.innerWidth < 768) {
     host.innerHTML = "";
     return;
   }
 
-  const pais = getCategoriasPai_(produtos);
-  if (!pais.length) { host.innerHTML = ""; return; }
+  const sep = (CONFIG_LOJA.SeparadorCategoria || ">").toString();
+  
+  // 1. Usa a função auxiliar que já existe para montar a árvore (Pai > Filhos)
+  const tree = buildCategoryTree_(produtos, sep);
+  const departamentos = Object.keys(tree).sort();
 
-  // botão "Ver Todos"
+  if (!departamentos.length) { host.innerHTML = ""; return; }
+
+  // 2. Botão "Ver Todos" (Sempre fixo no início)
   let html = `
-    <a href="#" class="cat-top-btn" data-cat="" onclick="limpar_filtros(); return false;">Ver Todos</a>
+    <a href="#" class="cat-top-btn" onclick="limpar_filtros(); return false;">Ver Todos</a>
   `;
 
-  pais.forEach(pai => {
-    html += `
-      <a href="#" class="cat-top-btn" data-cat="${escapeHtml_(pai)}"
-         onclick="mostrar_produtos_por_departamento('${escapeJs_(pai)}','${escapeJs_((CONFIG_LOJA.SeparadorCategoria||'>').toString())}'); return false;">
-        ${escapeHtml_(pai)}
-      </a>
-    `;
+  // 3. Loop pelos Departamentos
+  departamentos.forEach(dep => {
+    const subs = tree[dep] || [];
+
+    if (subs.length > 0) {
+      // === TEM SUBCATEGORIAS: CRIA DROPDOWN ===
+      html += `
+        <div class="dropdown d-inline-block">
+           <button class="cat-top-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+             ${escapeHtml_(dep)}
+           </button>
+           <ul class="dropdown-menu mt-2 shadow border-0">
+             <li>
+               <a class="dropdown-item fw-bold" href="#" 
+                  onclick="mostrar_produtos_por_departamento('${escapeJs_(dep)}','${escapeJs_(sep)}'); return false;">
+                  Ver tudo de ${escapeHtml_(dep)}
+               </a>
+             </li>
+             <li><hr class="dropdown-divider"></li>
+
+             ${subs.map(sub => `
+               <li>
+                 <a class="dropdown-item" href="#" 
+                    onclick="mostrar_produtos_por_categoria_hier('${escapeJs_(dep)}','${escapeJs_(sub)}','${escapeJs_(sep)}'); return false;">
+                    ${escapeHtml_(sub)}
+                 </a>
+               </li>
+             `).join('')}
+           </ul>
+        </div>
+      `;
+
+    } else {
+      // === SEM SUBCATEGORIAS: CRIA BOTÃO SIMPLES (IGUAL ANTES) ===
+      html += `
+        <a href="#" class="cat-top-btn" data-cat="${escapeHtml_(dep)}"
+           onclick="mostrar_produtos_por_departamento('${escapeJs_(dep)}','${escapeJs_(sep)}'); return false;">
+          ${escapeHtml_(dep)}
+        </a>
+      `;
+    }
   });
 
   host.innerHTML = html;
 
-  // tenta marcar "ativo" olhando o ?cat=...
+  // 4. Lógica visual para marcar o botão ativo
   try {
     const u = new URL(window.location.href);
     const cat = (u.searchParams.get("cat") || "").trim();
     if (!cat) return;
 
-    const sep = (CONFIG_LOJA.SeparadorCategoria || ">").toString();
     const paiAtivo = cat.split(sep)[0]?.trim();
-
+    
+    // Remove active anterior
     host.querySelectorAll(".cat-top-btn").forEach(a => a.classList.remove("active"));
-    const el = host.querySelector(`.cat-top-btn[data-cat="${CSS.escape(paiAtivo)}"]`);
+    
+    // Tenta encontrar o botão simples
+    let el = host.querySelector(`.cat-top-btn[data-cat="${CSS.escape(paiAtivo)}"]`);
+    
+    // Se não achou (pode ser um dropdown), tenta achar pelo texto do botão
+    if (!el) {
+        const btns = host.querySelectorAll('button.cat-top-btn');
+        btns.forEach(b => {
+            if (b.innerText.trim() === paiAtivo) el = b;
+        });
+    }
+    
     if (el) el.classList.add("active");
   } catch(e) {}
 }
