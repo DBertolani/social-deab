@@ -441,6 +441,41 @@ function moneyToFloat(v) {
 // --- BUSCA INTELIGENTE (Nome + Categoria + Descrição) ---
 var ALL_PRODUTOS = [];
 
+
+
+
+function cfgNum_(key, fallback) {
+  const v = (CONFIG_LOJA && CONFIG_LOJA[key]) ? String(CONFIG_LOJA[key]) : "";
+  const n = moneyToFloat(v);
+  return Number.isFinite(n) ? n : (fallback || 0);
+}
+
+function cfgUFs_(key) {
+  const raw = (CONFIG_LOJA && CONFIG_LOJA[key]) ? String(CONFIG_LOJA[key]) : "";
+  return raw.split(",").map(s => s.trim().toUpperCase()).filter(Boolean);
+}
+
+function aplicarFreteGratisAcimaDeX_(opcoes, ufDestino, subtotal) {
+  const minimo = cfgNum_("FreteGratisMinimo", 0);
+  const ufs = cfgUFs_("FreteGratisUFs");
+
+  const uf = String(ufDestino || "").trim().toUpperCase();
+  const temDireito = minimo > 0 && uf && ufs.includes(uf) && Number(subtotal) >= minimo;
+
+  if (!temDireito) return opcoes;
+
+  return (opcoes || []).map(op => {
+    const nome = String(op.nome || "").toUpperCase();
+    const isPac = nome.includes("PAC") || nome.includes("ECON") || nome.includes("ECONÔMICO");
+    if (isPac) {
+      return { ...op, valor: 0, __tagPromo: "GRÁTIS (acima de X)" };
+    }
+    return op;
+  });
+}
+
+
+
 // ===============================
 // ✅ LAZY LOAD de imagens da pasta (Drive)
 // ===============================
@@ -2293,165 +2328,266 @@ function buscarEnderecoSimples(cep) {
     }
 }
 
+
+/**
+ * ✅ calcularFreteCarrinho()
+ * O que essa função faz:
+ * 1) Lê o CEP do carrinho e valida
+ * 2) Busca UF/Cidade pelo ViaCEP (para regras de frete)
+ * 3) Soma peso e volume do carrinho (com fallback)
+ * 4) Chama Apps Script para obter opções de frete (PAC/SEDEX/etc)
+ * 5) Aplica regras EXISTENTES:
+ *    - Frete grátis por produto (campo freteGratisUF no item)
+ *    - Subsídio de frete (CONFIG_LOJA.SubsidioFrete)
+ * 6) ✅ NOVO (SEM interferir no que já funciona):
+ *    - Frete grátis acima de X reais para UFs específicas (Config):
+ *      CONFIG_LOJA.FreteGratisMinimo  (ex.: 199)
+ *      CONFIG_LOJA.FreteGratisUFs     (ex.: "SP,RJ,MG,ES")
+ *    - Essa regra só zera o PAC/Econômico quando elegível.
+ * 7) Renderiza lista de opções e auto-seleciona a melhor (grátis > primeira)
+ * 8) Restaura seleção anterior pelo cache (se mesmo CEP)
+ */
 async function calcularFreteCarrinho() {
-    var cep = document.getElementById('carrinho_cep').value.replace(/\D/g, '');
-    if (cep.length !== 8) { alert("CEP inválido"); return; }
+  // =========================
+  // 1) CEP + validações iniciais
+  // =========================
+  var cep = document.getElementById('carrinho_cep').value.replace(/\D/g, '');
+  if (cep.length !== 8) { alert("CEP inválido"); return; }
 
-    var carrinho = carrinhoGet_();
-    if (carrinho.length === 0) return;
+  var carrinho = carrinhoGet_();
+  if (carrinho.length === 0) return;
 
-    var divOpcoes = document.getElementById('carrinho_opcoes_frete');
-    divOpcoes.innerHTML = "Calculando...";
-    bloquearCheckout(true);
+  var divOpcoes = document.getElementById('carrinho_opcoes_frete');
+  divOpcoes.innerHTML = "Calculando...";
+  bloquearCheckout(true);
 
-    // ✅ garante UF SEM depender do blur
-    let ufDestino = "";
-    try {
-        const rCep = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-        const dCep = await rCep.json();
-        if (!dCep.erro) {
-            ufDestino = dCep.uf || "";
-            document.getElementById('carrinho_endereco_resumo').innerText = `${dCep.localidade}/${dCep.uf}`;
-            enderecoEntregaTemp = dCep;
-        }
-    } catch (e) {
-        console.warn("Falha ao buscar UF no ViaCEP", e);
+  // =========================
+  // 2) Descobrir UF/Cidade (ViaCEP) — usado nas regras de frete
+  // =========================
+  let ufDestino = "";
+  try {
+    const rCep = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const dCep = await rCep.json();
+    if (!dCep.erro) {
+      ufDestino = dCep.uf || "";
+      document.getElementById('carrinho_endereco_resumo').innerText = `${dCep.localidade}/${dCep.uf}`;
+      enderecoEntregaTemp = dCep;
     }
+  } catch (e) {
+    console.warn("Falha ao buscar UF no ViaCEP", e);
+  }
 
-   var todosProdutos = obterProdutosFonte_(); // ou ALL_PRODUTOS se já estiver carregado
-    var pesoTotal = 0;
-    var volumeTotal = 0;
+  // =========================
+  // 3) Somar peso/volume total do carrinho
+  // =========================
+  var todosProdutos = obterProdutosFonte_(); // ALL_PRODUTOS (memória) ou cache
+  var pesoTotal = 0;
+  var volumeTotal = 0;
 
-    carrinho.forEach(item => {
-        var prodOriginal = todosProdutos.find(p => p.ID == item.id.split('_')[0]);
-        if (prodOriginal) {
-            pesoTotal += (parseFloat(prodOriginal.Peso || 0.9) * item.quantidade);
-            volumeTotal += (parseFloat(prodOriginal.Altura || 15) * parseFloat(prodOriginal.Largura || 20) * parseFloat(prodOriginal.Comprimento || 20)) * item.quantidade;
-        } else {
-            pesoTotal += (0.9 * item.quantidade);
-            volumeTotal += (6000 * item.quantidade);
+  carrinho.forEach(item => {
+    var prodOriginal = todosProdutos.find(p => p.ID == item.id.split('_')[0]);
+    if (prodOriginal) {
+      pesoTotal += (parseFloat(prodOriginal.Peso || 0.9) * item.quantidade);
+      volumeTotal += (
+        (parseFloat(prodOriginal.Altura || 15) *
+         parseFloat(prodOriginal.Largura || 20) *
+         parseFloat(prodOriginal.Comprimento || 20)) * item.quantidade
+      );
+    } else {
+      // fallback seguro se não achar produto original
+      pesoTotal += (0.9 * item.quantidade);
+      volumeTotal += (6000 * item.quantidade);
+    }
+  });
+
+  // =========================
+  // 4) “Cubo” aproximado das dimensões (pra enviar ao cálculo de frete)
+  // =========================
+  var aresta = Math.pow(volumeTotal, 1 / 3);
+  var alturaFinal = Math.max(15, Math.ceil(aresta));
+  var larguraFinal = Math.max(15, Math.ceil(aresta));
+  var compFinal   = Math.max(20, Math.ceil(aresta));
+
+  // =========================
+  // 5) Payload para Apps Script (rota calcular_frete)
+  // =========================
+  var dadosFrete = {
+    op: "calcular_frete",
+    cep: cep,
+    peso: pesoTotal.toFixed(2),
+    comprimento: compFinal,
+    altura: alturaFinal,
+    largura: larguraFinal
+  };
+
+  // =========================
+  // 6) Config existente (subsídio) — já usado hoje
+  // =========================
+  const subsidio = moneyToFloat(CONFIG_LOJA.SubsidioFrete);
+
+  // =========================
+  // 7) ✅ NOVO: regra global "frete grátis acima de X" por UF (sem interferir no resto)
+  //    - Só entra se você preencher na CONFIG:
+  //      FreteGratisMinimo = 199
+  //      FreteGratisUFs = "SP,RJ,MG,ES"
+  // =========================
+  const getCfgNum_ = (key, fallback) => {
+    const v = (CONFIG_LOJA && CONFIG_LOJA[key]) ? String(CONFIG_LOJA[key]) : "";
+    const n = moneyToFloat(v);
+    return Number.isFinite(n) ? n : (fallback || 0);
+  };
+  const getCfgUFs_ = (key) => {
+    const raw = (CONFIG_LOJA && CONFIG_LOJA[key]) ? String(CONFIG_LOJA[key]) : "";
+    return raw.split(",").map(s => s.trim().toUpperCase()).filter(Boolean);
+  };
+
+  // subtotal do carrinho (sem frete)
+  const subtotalCarrinho = carrinho.reduce((acc, i) => {
+    const qtd = (parseInt(i.quantidade, 10) || 1);
+    return acc + (moneyToFloat(i.preco) * qtd);
+  }, 0);
+
+  // se elegível, zera PAC/Econômico
+  const minimoGratis = getCfgNum_("FreteGratisMinimo", 0);
+  const ufsGratis = getCfgUFs_("FreteGratisUFs");
+  const elegivelGratisAcimaX =
+    minimoGratis > 0 &&
+    String(ufDestino || "").trim().length === 2 &&
+    ufsGratis.includes(String(ufDestino).toUpperCase()) &&
+    subtotalCarrinho >= minimoGratis;
+
+  // =========================
+  // 8) Chama Apps Script e monta opções na tela
+  // =========================
+  fetch(CONFIG.SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify(dadosFrete)
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.erro) {
+        divOpcoes.innerHTML = `<span class="text-danger">${data.erro}</span>`;
+        return;
+      }
+
+      if (!data.opcoes) return;
+
+      // =========================
+      // 9) Regra existente: frete grátis por PRODUTO (se qualquer item permitir na UF)
+      // =========================
+      const ehGratisPorProduto = !!ufDestino && carrinho.some(item =>
+        item.freteGratisUF && String(item.freteGratisUF).includes(ufDestino)
+      );
+
+      // =========================
+      // 10) Render das opções (mantendo tudo que já funciona)
+      //     Prioridade de decisão:
+      //     A) Se "grátis acima de X" for elegível -> zera PAC/Econômico (sem mexer no restante)
+      //     B) Senão, aplica regra atual "grátis por produto" + subsídio
+      //     C) Senão, aplica só subsídio (se houver)
+      // =========================
+      let html = '<div class="list-group">';
+      let autoSelectEl = null;
+
+      data.opcoes.forEach((op) => {
+        let valorBase = moneyToFloat(op.valor);
+        let valorFinal = valorBase;
+
+        const nomeServico = String(op.nome || "").toUpperCase();
+        const isPac = nomeServico.includes("PAC") || nomeServico.includes("ECONÔMICO") || nomeServico.includes("ECONOMICO");
+
+        let textoExtra = "";
+
+        // === A) ✅ NOVO: Grátis acima de X (só zera PAC/Econômico) ===
+        // NÃO interfere na sua lógica atual: só "antecipa" o PAC como grátis
+        if (elegivelGratisAcimaX && isPac) {
+          valorFinal = 0;
+          textoExtra = `<span class="badge bg-success ms-2">GRÁTIS (acima de ${minimoGratis.toFixed(2)})</span>`;
         }
-    });
-
-    var aresta = Math.pow(volumeTotal, 1 / 3);
-    var alturaFinal = Math.max(15, Math.ceil(aresta));
-    var larguraFinal = Math.max(15, Math.ceil(aresta));
-    var compFinal = Math.max(20, Math.ceil(aresta));
-
-    var dadosFrete = {
-        op: "calcular_frete",
-        cep: cep,
-        peso: pesoTotal.toFixed(2),
-        comprimento: compFinal,
-        altura: alturaFinal,
-        largura: larguraFinal
-    };
-
-    const subsidio = moneyToFloat(CONFIG_LOJA.SubsidioFrete);
-
-
-
-    fetch(CONFIG.SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify(dadosFrete)
-    })
-        .then(r => r.json())
-        .then(data => {
-            if (data.erro) {
-                divOpcoes.innerHTML = `<span class="text-danger">${data.erro}</span>`;
-                return;
+        else {
+          // === B/C) Lógica que você já tinha (mantida) ===
+          if (ehGratisPorProduto) {
+            if (isPac) {
+              valorFinal = 0;
+              textoExtra = '<span class="badge bg-success ms-2">GRÁTIS</span>';
+            } else {
+              valorFinal = Math.max(0, valorFinal - subsidio);
+              textoExtra = '<span class="badge bg-info text-dark ms-2">Desconto Aplicado</span>';
             }
-
-            if (!data.opcoes) return;
-
-            // ✅ frete grátis: se QUALQUER item tem aquele UF na lista
-            const ehGratis = !!ufDestino && carrinho.some(item =>
-                item.freteGratisUF && String(item.freteGratisUF).includes(ufDestino)
-            );
-
-            let html = '<div class="list-group">';
-            let autoSelectEl = null;
-
-
-            data.opcoes.forEach((op) => {
-                let valorFinal = moneyToFloat(op.valor);
-                const nomeServico = String(op.nome || "").toUpperCase();
-                const isPac = nomeServico.includes("PAC") || nomeServico.includes("ECONÔMICO");
-                let textoExtra = "";
-
-                if (ehGratis) {
-                    if (isPac) {
-                        valorFinal = 0;
-                        textoExtra = '<span class="badge bg-success ms-2">GRÁTIS</span>';
-
-                    } else {
-                        valorFinal = Math.max(0, valorFinal - subsidio);
-                        textoExtra = '<span class="badge bg-info text-dark ms-2">Desconto Aplicado</span>';
-                    }
-                } else {
-                    if (subsidio > 0) {
-                        valorFinal = Math.max(0, valorFinal - subsidio);
-                        textoExtra = '<span class="badge bg-info text-dark ms-2">Desconto Aplicado</span>';
-                    }
-                }
-
-                const idRadio = `frete_${nomeServico.replace(/\W+/g, '_')}_${op.prazo}`;
-                html += `
-        <label class="list-group-item d-flex justify-content-between align-items-center" for="${idRadio}">
-          <div>
-            <input id="${idRadio}" class="form-check-input me-2" type="radio" name="freteRadio"
-              value="${valorFinal}" data-nome="${op.nome}"
-              onchange="selecionarFrete(this)">
-            ${op.nome} (${op.prazo} dias)
-            ${textoExtra}
-          </div>
-          <span class="fw-bold">R$ ${valorFinal.toFixed(2)}</span>
-        </label>
-      `;
-
-                // auto-seleção: pega a 1ª opção e, se aparecer alguma grátis, ela vira preferida
-                if (!autoSelectEl) autoSelectEl = { id: idRadio, valor: valorFinal, nome: op.nome };
-                if (valorFinal === 0) autoSelectEl = { id: idRadio, valor: valorFinal, nome: op.nome };
-
-            });
-
-            divOpcoes.innerHTML = html;
-
-            // ✅ tenta restaurar o frete salvo (mesmo CEP)
-            const cacheFrete = lerFreteCache();
-            let selecionou = false;
-
-            if (cacheFrete && cacheFrete.cep === cep) {
-                const radios = divOpcoes.querySelectorAll('input[name="freteRadio"]');
-                radios.forEach(r => {
-                    const nome = r.getAttribute('data-nome') || "";
-                    const val = moneyToFloat(r.value);
-                    if (!selecionou && nome === cacheFrete.nome && Math.abs(val - cacheFrete.valor) < 0.01) {
-                        r.checked = true;
-                        selecionarFrete(r);
-                        selecionou = true;
-                    }
-                });
+          } else {
+            if (subsidio > 0) {
+              valorFinal = Math.max(0, valorFinal - subsidio);
+              textoExtra = '<span class="badge bg-info text-dark ms-2">Desconto Aplicado</span>';
             }
+          }
+        }
 
-            // se não encontrou cache, usa auto-seleção padrão
-            if (!selecionou) {
-                setTimeout(() => {
-                    const el = document.getElementById(autoSelectEl?.id);
-                    if (el) {
-                        el.checked = true;
-                        selecionarFrete(el);
-                    }
-                }, 0);
-            }
+        // =========================
+        // 11) Monta o radio da opção
+        // =========================
+        const idRadio = `frete_${nomeServico.replace(/\W+/g, '_')}_${op.prazo}`;
+        html += `
+          <label class="list-group-item d-flex justify-content-between align-items-center" for="${idRadio}">
+            <div>
+              <input id="${idRadio}" class="form-check-input me-2" type="radio" name="freteRadio"
+                value="${valorFinal}" data-nome="${op.nome}"
+                onchange="selecionarFrete(this)">
+              ${op.nome} (${op.prazo} dias)
+              ${textoExtra}
+            </div>
+            <span class="fw-bold">R$ ${valorFinal.toFixed(2)}</span>
+          </label>
+        `;
 
+        // =========================
+        // 12) Auto-seleção (mantida)
+        // - primeiro item vira default
+        // - se aparecer algum grátis, ele vira preferido
+        // =========================
+        if (!autoSelectEl) autoSelectEl = { id: idRadio, valor: valorFinal, nome: op.nome };
+        if (valorFinal === 0) autoSelectEl = { id: idRadio, valor: valorFinal, nome: op.nome };
+      });
 
-        })
-        .catch(err => {
-            console.error(err);
-            divOpcoes.innerHTML = `<span class="text-danger">Erro ao calcular frete.</span>`;
+      divOpcoes.innerHTML = html;
+
+      // =========================
+      // 13) Restaura frete salvo (mesmo CEP) — mantido
+      // =========================
+      const cacheFrete = lerFreteCache();
+      let selecionou = false;
+
+      if (cacheFrete && cacheFrete.cep === cep) {
+        const radios = divOpcoes.querySelectorAll('input[name="freteRadio"]');
+        radios.forEach(r => {
+          const nome = r.getAttribute('data-nome') || "";
+          const val = moneyToFloat(r.value);
+          if (!selecionou && nome === cacheFrete.nome && Math.abs(val - cacheFrete.valor) < 0.01) {
+            r.checked = true;
+            selecionarFrete(r);
+            selecionou = true;
+          }
         });
+      }
+
+      // =========================
+      // 14) Se não restaurou do cache, seleciona automaticamente — mantido
+      // =========================
+      if (!selecionou) {
+        setTimeout(() => {
+          const el = document.getElementById(autoSelectEl?.id);
+          if (el) {
+            el.checked = true;
+            selecionarFrete(el);
+          }
+        }, 0);
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      divOpcoes.innerHTML = `<span class="text-danger">Erro ao calcular frete.</span>`;
+    });
 }
+
 
 
 function selecionarFrete(input) {
