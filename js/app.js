@@ -559,13 +559,13 @@ function renderCarouselImagens_(containerImagens, listaUrls) {
   const imgsLimpa = (listaUrls || []).map(s => String(s || "").trim()).filter(s => s.length > 4);
 
   // lista para viewer (maior, otimizada)
-  const imgsViewer = imgsLimpa.map(s => ajustarImagemDrive(s, 1600));
+  const imgsViewer = imgsLimpa.map(s => ajustarImagemDrive(s, 1400));
 
   containerImagens.innerHTML = "";
 
   imgsLimpa.forEach((src, idx) => {
     const div = document.createElement("div");
-    const srcAjustado = ajustarImagemDrive(src, 1200);
+    const srcAjustado = ajustarImagemDrive(src, 1000);
     div.className = (idx === 0) ? "carousel-item active" : "carousel-item";
 
     div.innerHTML = `
@@ -1723,7 +1723,7 @@ function mostrar_produtos(produtos) {
     produtos.forEach(p => {
         var altText = p.Produto + " - " + p.Categoria;
         var infoExtra = (p.Tamanhos || p.Variacoes) ? `<small>Opções disponíveis</small>` : '';
-        const imgCard = ajustarImagemDrive(p.ImagemPrincipal, 500);
+        const imgCard = ajustarImagemDrive(p.ImagemPrincipal, 420);
         const item = document.createElement('div');
         const colMobile = getColMobileClass();
         item.className = `${colClass} ${colMobile} mt-4`;
@@ -2176,7 +2176,7 @@ if (existe) {
         // ✅ CRÍTICO: salva o preço já convertido (resolve vírgula "129,90")
         preco: moneyToFloat(preco),
 
-        imagem: img,
+        imagem: ajustarImagemDrive(img, 120),
         quantidade: 1,
         freteGratisUF: freteGratisUF,
         variacao: variacao
@@ -2265,7 +2265,7 @@ function atualizar_carrinho() {
         row.innerHTML = `
         <div class="d-flex align-items-center" style="width: 45%;">
             <img 
-              src="${i.imagem}" 
+              src="${ajustarImagemDrive(i.imagem, 120)}" 
               width="50" 
               height="50"
               loading="lazy"
