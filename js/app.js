@@ -2427,6 +2427,9 @@ async function calcularFreteCarrinho() {
   // 6) Config existente (subsídio) — já usado hoje
   // =========================
   const subsidio = moneyToFloat(CONFIG_LOJA.SubsidioFrete);
+  // ✅ (Config) dias extras no prazo de entrega exibido ao cliente
+  const prazoExtraDias = Math.max(0, parseInt((CONFIG_LOJA?.PrazoExtraDias ?? "0"), 10) || 0);
+
 
   // =========================
   // 7) ✅ NOVO: regra global "frete grátis acima de X" por UF
@@ -2539,22 +2542,23 @@ async function calcularFreteCarrinho() {
           }
         }
 
-        // =========================
-        // 11) Monta o radio da opção
-        // =========================
-        const idRadio = `frete_${nomeServico.replace(/\W+/g, '_')}_${op.prazo}`;
-        html += `
-          <label class="list-group-item d-flex justify-content-between align-items-center" for="${idRadio}">
-            <div>
-              <input id="${idRadio}" class="form-check-input me-2" type="radio" name="freteRadio"
-                value="${valorFinal}" data-nome="${op.nome}"
-                onchange="selecionarFrete(this)">
-              ${op.nome} (${op.prazo} dias)
-              ${textoExtra}
-            </div>
-            <span class="fw-bold">R$ ${valorFinal.toFixed(2)}</span>
-          </label>
-        `;
+// =========================
+// 11) Monta o radio da opção
+// =========================
+const idRadio = `frete_${nomeServico.replace(/\W+/g, '_')}_${op.prazo}`;
+html += `
+  <label class="list-group-item d-flex justify-content-between align-items-center" for="${idRadio}">
+    <div>
+      <input id="${idRadio}" class="form-check-input me-2" type="radio" name="freteRadio"
+        value="${valorFinal}" data-nome="${op.nome}"
+        onchange="selecionarFrete(this)">
+      ${op.nome} (${prazoExtraDias > 0 ? `${prazoExtraDias} dias úteis de preparo + ` : ""}${parseInt(op.prazo, 10) || 0} dias úteis de envio (prazo dos Correios/Transportadora))
+      ${textoExtra}
+    </div>
+    <span class="fw-bold">R$ ${valorFinal.toFixed(2)}</span>
+  </label>
+`;
+
 
         // =========================
         // 12) Auto-seleção (mantida)
