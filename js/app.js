@@ -2899,9 +2899,8 @@ function iniciarIdentificacaoSegura() {
             }
         } else {
             // CPF não existe -> Checkout Manual
-            if(confirm("CPF não encontrado. Deseja preencher o endereço manualmente?")) {
-                irParaCheckoutManual(cpf);
-            }
+              mostrarAvisoCpfNaoEncontrado_(cpf);
+
         }
     })
     .catch(e => {
@@ -2911,6 +2910,29 @@ function iniciarIdentificacaoSegura() {
         alert("Erro de conexão. Tente novamente.");
     });
 }
+
+function mostrarAvisoCpfNaoEncontrado_(cpf) {
+  const box = document.getElementById("aviso_cpf_nao_encontrado");
+  if (!box) return;
+
+  box.innerHTML = `
+    <div class="fw-bold mb-1">CPF não encontrado</div>
+    <div class="small mb-2">
+      Não localizamos cadastro para este CPF. Você pode continuar e preencher seus dados agora.
+    </div>
+    <div class="d-grid gap-2">
+      <button class="btn btn-primary" type="button" onclick="irParaCheckoutManual('${cpf || ""}')">
+        Continuar com cadastro
+      </button>
+      <button class="btn btn-outline-secondary" type="button"
+        onclick="document.getElementById('aviso_cpf_nao_encontrado').style.display='none'">
+        Voltar
+      </button>
+    </div>
+  `;
+  box.style.display = "block";
+}
+
 
 function validarIdentificacaoSegura() {
     var cpf = document.getElementById('cpf_identificacao').value.replace(/\D/g, '');
