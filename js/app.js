@@ -2337,8 +2337,8 @@ function buscarEnderecoSimples(cep) {
  * 3) Soma peso e volume do carrinho (com fallback)
  * 4) Chama Apps Script para obter opções de frete (PAC/SEDEX/etc)
  * 5) Aplica regras EXISTENTES:
- *    - Frete grátis por produto (campo freteGratisUF no item)
  *    - Subsídio de frete (CONFIG_LOJA.SubsidioFrete)
+ *    - Frete grátis por produto (campo freteGratisUF no item) ✅ agora com “travinha” opcional
  * 6) ✅ NOVO (SEM interferir no que já funciona):
  *    - Frete grátis acima de X reais para UFs específicas (Config):
  *      CONFIG_LOJA.FreteGratisMinimo  (ex.: 199)
@@ -2370,7 +2370,8 @@ async function calcularFreteCarrinho() {
     const dCep = await rCep.json();
     if (!dCep.erro) {
       ufDestino = dCep.uf || "";
-      document.getElementById('carrinho_endereco_resumo').innerText = `${dCep.localidade}/${dCep.uf}`;
+      const elResumo = document.getElementById('carrinho_endereco_resumo');
+      if (elResumo) elResumo.innerText = `${dCep.localidade}/${dCep.uf}`;
       enderecoEntregaTemp = dCep;
     }
   } catch (e) {
@@ -2385,18 +2386,20 @@ async function calcularFreteCarrinho() {
   var volumeTotal = 0;
 
   carrinho.forEach(item => {
-    var prodOriginal = todosProdutos.find(p => p.ID == item.id.split('_')[0]);
+    var prodOriginal = (todosProdutos || []).find(p => String(p.ID) === String(item.id).split('_')[0]);
+    const qtd = (parseInt(item.quantidade, 10) || 1);
+
     if (prodOriginal) {
-      pesoTotal += (parseFloat(prodOriginal.Peso || 0.9) * item.quantidade);
+      pesoTotal += (parseFloat(prodOriginal.Peso || 0.9) * qtd);
       volumeTotal += (
         (parseFloat(prodOriginal.Altura || 15) *
          parseFloat(prodOriginal.Largura || 20) *
-         parseFloat(prodOriginal.Comprimento || 20)) * item.quantidade
+         parseFloat(prodOriginal.Comprimento || 20)) * qtd
       );
     } else {
       // fallback seguro se não achar produto original
-      pesoTotal += (0.9 * item.quantidade);
-      volumeTotal += (6000 * item.quantidade);
+      pesoTotal += (0.9 * qtd);
+      volumeTotal += (6000 * qtd);
     }
   });
 
@@ -2426,19 +2429,21 @@ async function calcularFreteCarrinho() {
   const subsidio = moneyToFloat(CONFIG_LOJA.SubsidioFrete);
 
   // =========================
-  // 7) ✅ NOVO: regra global "frete grátis acima de X" por UF (sem interferir no resto)
-  //    - Só entra se você preencher na CONFIG:
-  //      FreteGratisMinimo = 199
-  //      FreteGratisUFs = "SP,RJ,MG,ES"
+  // 7) ✅ NOVO: regra global "frete grátis acima de X" por UF
+  //    (habilita só se CONFIG tiver as chaves preenchidas)
+  //    - FreteGratisMinimo: número (ex: 199)
+  //    - FreteGratisUFs: "SP,RJ,MG,ES"
   // =========================
   const getCfgNum_ = (key, fallback) => {
-    const v = (CONFIG_LOJA && CONFIG_LOJA[key]) ? String(CONFIG_LOJA[key]) : "";
+    const v = (CONFIG_LOJA && CONFIG_LOJA[key] != null) ? String(CONFIG_LOJA[key]) : "";
     const n = moneyToFloat(v);
     return Number.isFinite(n) ? n : (fallback || 0);
   };
+
   const getCfgUFs_ = (key) => {
-    const raw = (CONFIG_LOJA && CONFIG_LOJA[key]) ? String(CONFIG_LOJA[key]) : "";
-    return raw.split(",").map(s => s.trim().toUpperCase()).filter(Boolean);
+    const raw = (CONFIG_LOJA && CONFIG_LOJA[key] != null) ? String(CONFIG_LOJA[key]) : "";
+    // aceita "SP,RJ" ou "SP;RJ" ou "SP RJ"
+    return raw.split(/[,;|\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
   };
 
   // subtotal do carrinho (sem frete)
@@ -2447,11 +2452,14 @@ async function calcularFreteCarrinho() {
     return acc + (moneyToFloat(i.preco) * qtd);
   }, 0);
 
-  // se elegível, zera PAC/Econômico
   const minimoGratis = getCfgNum_("FreteGratisMinimo", 0);
   const ufsGratis = getCfgUFs_("FreteGratisUFs");
+
+  // “Regra global” só é considerada ATIVA se existir mínimo > 0 e lista de UFs
+  const regraGlobalAtiva = (minimoGratis > 0 && ufsGratis.length > 0);
+
   const elegivelGratisAcimaX =
-    minimoGratis > 0 &&
+    regraGlobalAtiva &&
     String(ufDestino || "").trim().length === 2 &&
     ufsGratis.includes(String(ufDestino).toUpperCase()) &&
     subtotalCarrinho >= minimoGratis;
@@ -2469,22 +2477,31 @@ async function calcularFreteCarrinho() {
         divOpcoes.innerHTML = `<span class="text-danger">${data.erro}</span>`;
         return;
       }
-
       if (!data.opcoes) return;
 
       // =========================
       // 9) Regra existente: frete grátis por PRODUTO (se qualquer item permitir na UF)
+      // ✅ AJUSTE CRÍTICO:
+      // - Se a REGRA GLOBAL estiver ativa, o “grátis por produto” NÃO pode furar o mínimo.
+      // - Então: só deixa “grátis por produto” valer se:
+      //   a) regraGlobalAtiva = false  (você não está usando mínimo/UFs)
+      //   OU
+      //   b) elegivelGratisAcimaX = true (atingiu o mínimo)
       // =========================
-      const ehGratisPorProduto = !!ufDestino && carrinho.some(item =>
-        item.freteGratisUF && String(item.freteGratisUF).includes(ufDestino)
+      const ehGratisPorProdutoBruto = !!ufDestino && carrinho.some(item =>
+        item.freteGratisUF && String(item.freteGratisUF).toUpperCase().includes(String(ufDestino).toUpperCase())
       );
+
+      const ehGratisPorProduto =
+        ehGratisPorProdutoBruto &&
+        (!regraGlobalAtiva || elegivelGratisAcimaX);
 
       // =========================
       // 10) Render das opções (mantendo tudo que já funciona)
-      //     Prioridade de decisão:
-      //     A) Se "grátis acima de X" for elegível -> zera PAC/Econômico (sem mexer no restante)
-      //     B) Senão, aplica regra atual "grátis por produto" + subsídio
-      //     C) Senão, aplica só subsídio (se houver)
+      // Prioridade:
+      // A) Se elegível “acima de X” -> zera PAC/Econômico
+      // B) Senão, se “grátis por produto” -> zera PAC/Econômico
+      // C) Senão, aplica subsídio (se houver)
       // =========================
       let html = '<div class="list-group">';
       let autoSelectEl = null;
@@ -2499,13 +2516,12 @@ async function calcularFreteCarrinho() {
         let textoExtra = "";
 
         // === A) ✅ NOVO: Grátis acima de X (só zera PAC/Econômico) ===
-        // NÃO interfere na sua lógica atual: só "antecipa" o PAC como grátis
         if (elegivelGratisAcimaX && isPac) {
           valorFinal = 0;
-          textoExtra = `<span class="badge bg-success ms-2">GRÁTIS (acima de ${minimoGratis.toFixed(2)})</span>`;
+          textoExtra = `<span class="badge bg-success ms-2">GRÁTIS</span>`;
         }
         else {
-          // === B/C) Lógica que você já tinha (mantida) ===
+          // === B) Regra existente (agora com “travinha”) ===
           if (ehGratisPorProduto) {
             if (isPac) {
               valorFinal = 0;
@@ -2515,6 +2531,7 @@ async function calcularFreteCarrinho() {
               textoExtra = '<span class="badge bg-info text-dark ms-2">Desconto Aplicado</span>';
             }
           } else {
+            // === C) Só subsídio ===
             if (subsidio > 0) {
               valorFinal = Math.max(0, valorFinal - subsidio);
               textoExtra = '<span class="badge bg-info text-dark ms-2">Desconto Aplicado</span>';
