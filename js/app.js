@@ -3339,27 +3339,57 @@ try {
 
     // --- Fluxo Original Mercado Pago (Mantido) ---
 // --- Fluxo Original Mercado Pago (Mantido) ---
+// ✅ LOGGING: Registrar dados enviados para o backend
+const pedidoData = {
+    cliente,
+    items,
+    logistica: logisticaInfo,
+    return_to: window.location.href
+};
+
+console.log("🚀 ENVIANDO DADOS PARA MERCADO PAGO:", {
+    timestamp: new Date().toISOString(),
+    data: pedidoData,
+    clienteCpf: cliente.cpf,
+    totalItems: items.length,
+    totalValor: items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0)
+});
+
 fetch(CONFIG.SCRIPT_URL, {
     method: 'POST',
-    body: JSON.stringify({
-        cliente,
-        items,
-        logistica: logisticaInfo,
-
-        // ✅ NOVO: para o backend saber pra onde voltar
-        return_to: window.location.href
-    })
+    body: JSON.stringify(pedidoData)
 })
-.then(r => r.text())
+.then(r => {
+    console.log("📥 RESPOSTA DO BACKEND:", {
+        status: r.status,
+        statusText: r.statusText,
+        ok: r.ok
+    });
+    return r.text();
+})
 .then(link => { 
+    console.log("🔗 LINK DE PAGAMENTO GERADO:", {
+        link: link,
+        isHttp: link.includes("http"),
+        timestamp: new Date().toISOString()
+    });
+    
     if(link.includes("http")) {
+        console.log("✅ REDIRECIONANDO PARA MERCADO PAGO");
         window.location.href = link; 
     } else {
+        console.error("❌ ERRO AO GERAR LINK DE PAGAMENTO:", link);
         alert("Erro ao gerar link de pagamento: " + link);
         if(btn) { btn.innerText = "Tentar Novamente"; btn.disabled = false; }
     }
 })
 .catch(e => {
+    console.error("💥 ERRO NO PROCESSAMENTO:", {
+        error: e,
+        message: e.message,
+        stack: e.stack,
+        timestamp: new Date().toISOString()
+    });
     alert("Erro ao processar.");
     if (btn) {
         btn.innerText = "Tentar Novamente";
