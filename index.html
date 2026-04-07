@@ -5,17 +5,17 @@
 <head>
 
 
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-BFZP55CRFY"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-BFZP55CRFY"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
 
-  gtag('config', 'G-BFZP55CRFY');
-</script>
-  
-  
+    gtag('config', 'G-BFZP55CRFY');
+  </script>
+
+
   <meta charset='utf-8' />
   <meta content='width=device-width, initial-scale=1' name='viewport' />
 
@@ -37,146 +37,154 @@
   <link href="css/style.css" rel="stylesheet" />
 
 
- <style>
-  body {
-    padding-top: 110px;   /* ✅ COMPENSA navbar fixa no mobile */
-    padding-bottom: 120px;
-  }
-
-  @media (min-width: 768px) {
+  <style>
     body {
-      padding-top: 70px;  /* ✅ Desktop precisa de menos espaço */
+      padding-top: 110px;
+      /* ✅ COMPENSA navbar fixa no mobile */
+      padding-bottom: 120px;
     }
-  }
 
-  @media (max-width: 576px) {
-    #btn_carrinho_flutuante {
-      bottom: 20px;
-      right: 20px;
+    @media (min-width: 768px) {
+      body {
+        padding-top: 70px;
+        /* ✅ Desktop precisa de menos espaço */
+      }
     }
-  }
 
-.btn-check:checked+.btn-outline-secondary {
-  background-color: var(--cor-principal, #0d6efd);
-  color: var(--cor-principal-texto, #ffffff);
-  border-color: var(--cor-principal, #0d6efd);
-}
+    @media (max-width: 576px) {
+      #btn_carrinho_flutuante {
+        bottom: 20px;
+        right: 20px;
+      }
+    }
 
-   
-/* ✅ Esconde o carrinho flutuante quando abrir filtros */
-body.filtros-abertos #btn_carrinho_flutuante {
-  display: none !important;
-}
-
-/* ✅ CSS DO RODAPÉ PROFISSIONAL (Substituir o antigo) */
-footer.site-footer {
-  background-color: #f8f9fa; /* Fundo claro profissional */
-  color: #6c757d;
-  padding-top: 60px;
-  padding-bottom: 30px;
-  border-top: 1px solid #dee2e6;
-  margin-top: 60px;
-  font-size: 0.9rem;
-}
-
-footer.site-footer h5 {
-  color: #212529; /* Cor escura para títulos */
-  font-weight: 700;
-  margin-bottom: 20px;
-  font-size: 1.1rem;
-}
-
-footer.site-footer a {
-  color: #6c757d;
-  text-decoration: none;
-  transition: all 0.2s;
-}
-
-footer.site-footer a:hover {
-  color: var(--cor-principal, #0d6efd);
-  text-decoration: underline;
-}
-
-#lista_info_site a:hover {
-  color: var(--cor-principal) !important;
-  text-decoration: none;
-}
-#lista_info_site i.bi {
-  font-size: 1.05rem;
-}
+    .btn-check:checked+.btn-outline-secondary {
+      background-color: var(--cor-principal, #0d6efd);
+      color: var(--cor-principal-texto, #ffffff);
+      border-color: var(--cor-principal, #0d6efd);
+    }
 
 
-/* Ícones sociais */
-.social-icons a {
-  font-size: 1.5rem;
-  margin-right: 15px;
-  display: inline-block;
-}
+    /* ✅ Esconde o carrinho flutuante quando abrir filtros */
+    body.filtros-abertos #btn_carrinho_flutuante {
+      display: none !important;
+    }
 
-/* Barra inferior (Copyright + Dev) */
-.footer-bottom {
-  margin-top: 40px;
-  padding-top: 20px;
-  border-top: 1px solid #e9ecef;
-  font-size: 0.85rem;
-}
+    /* ✅ CSS DO RODAPÉ PROFISSIONAL (Substituir o antigo) */
+    footer.site-footer {
+      background-color: #f8f9fa;
+      /* Fundo claro profissional */
+      color: #6c757d;
+      padding-top: 60px;
+      padding-bottom: 30px;
+      border-top: 1px solid #dee2e6;
+      margin-top: 60px;
+      font-size: 0.9rem;
+    }
 
-.selo-dev {
-  font-weight: 600;
-  opacity: 0.8;
-}
-.selo-dev:hover {
-  opacity: 1;
-}
+    footer.site-footer h5 {
+      color: #212529;
+      /* Cor escura para títulos */
+      font-weight: 700;
+      margin-bottom: 20px;
+      font-size: 1.1rem;
+    }
 
+    footer.site-footer a {
+      color: #6c757d;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
 
-/* ✅ Barra de categorias no topo (desktop) */
-#catsDesktopBar .cat-top-btn{
-  color: rgba(255,255,255,.92);
-  border: 1px solid rgba(255,255,255,.25);
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 14px;
-  text-decoration: none;
-  line-height: 1;
-  background: rgba(255,255,255,.06);
-}
-#catsDesktopBar .cat-top-btn:hover{
-  background: rgba(255,255,255,.14);
-}
-#catsDesktopBar .cat-top-btn.active{
-  background: rgba(255,255,255,.22);
-  border-color: rgba(255,255,255,.55);
-  font-weight: 700;
-}
+    footer.site-footer a:hover {
+      color: var(--cor-principal, #0d6efd);
+      text-decoration: underline;
+    }
 
+    #lista_info_site a:hover {
+      color: var(--cor-principal) !important;
+      text-decoration: none;
+    }
 
-/* ✅ Rodapé mais centralizado no mobile */
-@media (max-width: 576px) {
-  footer .row > div {
-    text-align: center;
-  }
-  footer .social-icons,
-  footer #footer_insta,
-  footer #footer_face {
-    justify-content: center !important;
-  }
-  footer .d-flex.align-items-center {
-    justify-content: center;
-  }
-  footer .border-top.pt-2.mt-2 small {
-    display: block;
-  }
-  footer .col-lg-4 p,
-  footer .col-lg-3 p {
-    justify-content: center;
-  }
-}
+    #lista_info_site i.bi {
+      font-size: 1.05rem;
+    }
 
 
+    /* Ícones sociais */
+    .social-icons a {
+      font-size: 1.5rem;
+      margin-right: 15px;
+      display: inline-block;
+    }
+
+    /* Barra inferior (Copyright + Dev) */
+    .footer-bottom {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #e9ecef;
+      font-size: 0.85rem;
+    }
+
+    .selo-dev {
+      font-weight: 600;
+      opacity: 0.8;
+    }
+
+    .selo-dev:hover {
+      opacity: 1;
+    }
 
 
-</style>
+    /* ✅ Barra de categorias no topo (desktop) */
+    #catsDesktopBar .cat-top-btn {
+      color: rgba(255, 255, 255, .92);
+      border: 1px solid rgba(255, 255, 255, .25);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 14px;
+      text-decoration: none;
+      line-height: 1;
+      background: rgba(255, 255, 255, .06);
+    }
+
+    #catsDesktopBar .cat-top-btn:hover {
+      background: rgba(255, 255, 255, .14);
+    }
+
+    #catsDesktopBar .cat-top-btn.active {
+      background: rgba(255, 255, 255, .22);
+      border-color: rgba(255, 255, 255, .55);
+      font-weight: 700;
+    }
+
+
+    /* ✅ Rodapé mais centralizado no mobile */
+    @media (max-width: 576px) {
+      footer .row>div {
+        text-align: center;
+      }
+
+      footer .social-icons,
+      footer #footer_insta,
+      footer #footer_face {
+        justify-content: center !important;
+      }
+
+      footer .d-flex.align-items-center {
+        justify-content: center;
+      }
+
+      footer .border-top.pt-2.mt-2 small {
+        display: block;
+      }
+
+      footer .col-lg-4 p,
+      footer .col-lg-3 p {
+        justify-content: center;
+      }
+    }
+  </style>
 
 
 
@@ -190,35 +198,35 @@ footer.site-footer a:hover {
         <h1 id="logo_site" style="font-size: 1.25rem; margin:0; display:inline; font-weight: bold;">...</h1>
       </a>
 
-    <button aria-controls="menuMobileOffcanvas" aria-expanded="false" aria-label="Toggle navigation"
-      class="navbar-toggler d-md-none"
-      data-bs-target="#menuMobileOffcanvas" data-bs-toggle="offcanvas" type="button">
-      <span class="navbar-toggler-icon"></span>
-    </button>
+      <button aria-controls="menuMobileOffcanvas" aria-expanded="false" aria-label="Toggle navigation"
+        class="navbar-toggler d-md-none" data-bs-target="#menuMobileOffcanvas" data-bs-toggle="offcanvas" type="button">
+        <span class="navbar-toggler-icon"></span>
+      </button>
 
 
-      
-      
+
+
       <div class='collapse navbar-collapse' id='navbarCollapse'>
 
         <ul class='navbar-nav me-auto mb-2 mb-md-0'>
           <!-- ✅ CATEGORIAS TOP (SOMENTE DESKTOP) -->
           <li class="nav-item d-none d-md-flex align-items-center flex-wrap gap-2 ms-2" id="catsDesktopBar"></li>
 
-          
+
           <li class='nav-item'>
-            <a class='nav-link active fw-bold' data-bs-target='#modalLogin' data-bs-toggle='modal' href='#' id='btn_login'>
+            <a class='nav-link active fw-bold' data-bs-target='#modalLogin' data-bs-toggle='modal' href='#'
+              id='btn_login'>
               📦 Meus Pedidos
             </a>
           </li>
 
-            <li class='nav-item dropdown d-md-none'>
-              <a aria-expanded='false' class='nav-link active dropdown-toggle' data-bs-toggle='dropdown' href='#'
-                id='navbarDropdownMenuLink' role='button'>Categorias</a>
-              <ul aria-labelledby='navbarDropdownMenuLink' class='dropdown-menu' id='categoria_menu'></ul>
-            </li>
+          <li class='nav-item dropdown d-md-none'>
+            <a aria-expanded='false' class='nav-link active dropdown-toggle' data-bs-toggle='dropdown' href='#'
+              id='navbarDropdownMenuLink' role='button'>Categorias</a>
+            <ul aria-labelledby='navbarDropdownMenuLink' class='dropdown-menu' id='categoria_menu'></ul>
+          </li>
 
-          
+
         </ul>
         <form class="d-none d-md-flex" id="form_busca" role="search" action="javascript:void(0)"> <input
             aria-label="Buscar Produtos" class="form-control me-2" id="txt_search" placeholder="Buscar..."
@@ -418,7 +426,7 @@ footer.site-footer a:hover {
 
 
 
-<div class="modal fade" id="modalLogin" tabindex="-1">
+  <div class="modal fade" id="modalLogin" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content border-0 shadow-lg">
         <div class="modal-header bg-primary text-white">
@@ -430,12 +438,12 @@ footer.site-footer a:hover {
             Acesse seu histórico de compras e status de envio.<br>
             <strong>Não precisa de senha!</strong> Enviaremos um código para seu e-mail.
           </p>
-          
+
           <form id="form-login-otp" onsubmit="event.preventDefault(); iniciarLoginMeusPedidos();">
             <div class="mb-3">
               <label class="form-label fw-bold">Digite seu CPF:</label>
-              <input class="form-control form-control-lg text-center" id="login_cpf_acesso" required 
-                     placeholder="000.000.000-00" oninput="mascaraCpf(this)" style="font-size: 1.2rem;" />
+              <input class="form-control form-control-lg text-center" id="login_cpf_acesso" required
+                placeholder="000.000.000-00" oninput="mascaraCpf(this)" style="font-size: 1.2rem;" />
             </div>
             <div class="d-grid">
               <button class="btn btn-primary btn-lg" type="submit" id="btn_login_otp">
@@ -445,26 +453,25 @@ footer.site-footer a:hover {
           </form>
 
           <div id="area_codigo_login" class="mt-4 pt-3 border-top" style="display:none;">
-             <div class="alert alert-info py-2 small text-center">
-                <i class="bi bi-envelope-check"></i> Verifique seu e-mail
-             </div>
-             
-             <div class="mb-3">
-                <label class="form-label text-center w-100 fw-bold">Código de 6 dígitos:</label>
-                <input type="tel" class="form-control text-center bg-light" id="login_otp_input" 
-                       placeholder="000000" maxlength="6" 
-                       style="letter-spacing: 8px; font-weight:bold; font-size: 1.5rem;">
-             </div>
-             <div class="d-grid">
-                <button class="btn btn-success btn-lg" onclick="validarLoginMeusPedidos()">
-                   <i class="bi bi-unlock-fill me-2"></i> Acessar Painel
-                </button>
-             </div>
+            <div class="alert alert-info py-2 small text-center">
+              <i class="bi bi-envelope-check"></i> Verifique seu e-mail
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label text-center w-100 fw-bold">Código de 6 dígitos:</label>
+              <input type="tel" class="form-control text-center bg-light" id="login_otp_input" placeholder="000000"
+                maxlength="6" style="letter-spacing: 8px; font-weight:bold; font-size: 1.5rem;">
+            </div>
+            <div class="d-grid">
+              <button class="btn btn-success btn-lg" onclick="validarLoginMeusPedidos()">
+                <i class="bi bi-unlock-fill me-2"></i> Acessar Painel
+              </button>
+            </div>
           </div>
 
         </div>
         <div class="modal-footer justify-content-center bg-light">
-           <small class="text-muted">Ainda não comprou? Faça um pedido para se cadastrar automaticamente.</small>
+          <small class="text-muted">Ainda não comprou? Faça um pedido para se cadastrar automaticamente.</small>
         </div>
       </div>
     </div>
@@ -547,7 +554,8 @@ footer.site-footer a:hover {
             <div class="row mb-3">
               <div class="col-md-12">
                 <label class="form-label">E-mail</label>
-                <input type="email" class="form-control" id="checkout_email" placeholder="ex: nome@email.com" autocomplete="email" />
+                <input type="email" class="form-control" id="checkout_email" placeholder="ex: nome@email.com"
+                  autocomplete="email" />
               </div>
             </div>
 
@@ -644,7 +652,7 @@ footer.site-footer a:hover {
 
 
 
-<div class="modal fade" id="modalIdentificacao" tabindex="-1" aria-hidden="true">
+  <div class="modal fade" id="modalIdentificacao" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
 
       <div class="modal-content shadow-lg border-0">
@@ -654,7 +662,7 @@ footer.site-footer a:hover {
         </div>
 
         <div class="modal-body">
-          
+
           <div id="passo_cpf">
             <p class="text-muted small mb-3">
               Para proteger sua compra, utilizamos uma verificação de duas etapas.
@@ -668,7 +676,8 @@ footer.site-footer a:hover {
             </div>
 
             <div class="bg-light p-3 rounded border mb-3">
-              <h6 class="small fw-bold text-primary mb-2"><i class="bi bi-info-circle me-1"></i> Por que pedimos seu CPF?</h6>
+              <h6 class="small fw-bold text-primary mb-2"><i class="bi bi-info-circle me-1"></i> Por que pedimos seu
+                CPF?</h6>
               <ul class="small text-muted mb-0 ps-3" style="font-size: 0.85rem;">
                 <li>Para identificar seu cadastro e endereço de entrega;</li>
                 <li>Para emissão de Nota Fiscal (obrigatório por lei);</li>
@@ -679,7 +688,8 @@ footer.site-footer a:hover {
             <div class="form-check mb-4">
               <input class="form-check-input" type="checkbox" id="check_lgpd">
               <label class="form-check-label small text-muted" for="check_lgpd">
-                Concordo com o uso dos meus dados pessoais (CPF e contato) <strong>exclusivamente</strong> para o processamento deste pedido e entrega, conforme a Lei Geral de Proteção de Dados (LGPD).
+                Concordo com o uso dos meus dados pessoais (CPF e contato) <strong>exclusivamente</strong> para o
+                processamento deste pedido e entrega, conforme a Lei Geral de Proteção de Dados (LGPD).
               </label>
             </div>
 
@@ -706,8 +716,9 @@ footer.site-footer a:hover {
 
             <div class="mb-3">
               <label class="form-label fw-bold text-center w-100">Digite o Código de 6 dígitos:</label>
-              <input type="tel" class="form-control form-control-lg text-center tracking-widest bg-light" id="input_codigo_otp"
-                placeholder="000000" maxlength="6" style="letter-spacing: 5px; font-weight: bold; font-size: 1.5rem;">
+              <input type="tel" class="form-control form-control-lg text-center tracking-widest bg-light"
+                id="input_codigo_otp" placeholder="000000" maxlength="6"
+                style="letter-spacing: 5px; font-weight: bold; font-size: 1.5rem;">
             </div>
 
             <div class="d-grid gap-2 mt-4">
@@ -718,12 +729,12 @@ footer.site-footer a:hover {
                 <i class="bi bi-arrow-left"></i> Voltar / Corrigir CPF
               </button>
             </div>
-            
+
             <div class="text-center mt-3">
-               <small class="text-muted" style="font-size: 0.75rem;">Não recebeu? Verifique sua caixa de SPAM.</small>
+              <small class="text-muted" style="font-size: 0.75rem;">Não recebeu? Verifique sua caixa de SPAM.</small>
             </div>
           </div>
-          
+
         </div>
       </div>
     </div>
@@ -791,197 +802,207 @@ footer.site-footer a:hover {
   </div>
 
   <div class="modal fade" id="modalListaPedidos" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
-    <div class="modal-content shadow-lg border-0">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title"><i class="bi bi-bag-check me-2"></i>Histórico de Compras</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body bg-light">
-        <div id="loading_pedidos" class="text-center py-5">
-           <div class="spinner-border text-primary" role="status"></div>
-           <p class="mt-2 text-muted">Buscando suas compras...</p>
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+      <div class="modal-content shadow-lg border-0">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title"><i class="bi bi-bag-check me-2"></i>Histórico de Compras</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-        
-        <div id="container_pedidos_lista"></div>
+        <div class="modal-body bg-light">
+          <div id="loading_pedidos" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Buscando suas compras...</p>
+          </div>
+
+          <div id="container_pedidos_lista"></div>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- ✅ OFFCANVAS: Menu Mobile (Categorias) -->
-<div class="offcanvas offcanvas-start w-100" tabindex="-1" id="menuMobileOffcanvas" aria-labelledby="menuMobileLabel">
-  <div class="offcanvas-header">
-    <h5 class="offcanvas-title" id="menuMobileLabel">Categorias</h5>
-    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
-  </div>
-
-  <div class="offcanvas-body">
-    <div class="d-grid gap-2 mb-3">
-      <button class="btn btn-outline-secondary" onclick="limpar_filtros(); fecharMenuMobileOffcanvas_();">
-        Ver Todos
-      </button>
+  <!-- ✅ OFFCANVAS: Menu Mobile (Categorias) -->
+  <div class="offcanvas offcanvas-start w-100" tabindex="-1" id="menuMobileOffcanvas" aria-labelledby="menuMobileLabel">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title" id="menuMobileLabel">Categorias</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
     </div>
 
-    <div id="menuMobileConteudo"></div>
-  </div>
-</div>
+    <div class="offcanvas-body">
+      <div class="d-grid gap-2 mb-3">
+        <button class="btn btn-outline-secondary" onclick="limpar_filtros(); fecharMenuMobileOffcanvas_();">
+          Ver Todos
+        </button>
+      </div>
 
-  
-<!-- ✅ OFFCANVAS: Filtros no Mobile (TELA CHEIA) -->
-<div class="offcanvas offcanvas-start w-100" tabindex="-1" id="offcanvasFiltros" aria-labelledby="offcanvasFiltrosLabel">
-  <div class="offcanvas-header">
-    <h5 class="offcanvas-title" id="offcanvasFiltrosLabel">Filtrar</h5>
-    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
-  </div>
-
-  <div class="offcanvas-body">
-    <div id="filtros_atributos_mobile"></div>
-
-    <div class="d-flex gap-2 mt-3">
-      <button class="btn btn-outline-secondary w-50" onclick="limparFiltrosAtributos(); atualizarBadgeFiltros();">
-        Limpar
-      </button>
-      <button class="btn btn-primary w-50" data-bs-dismiss="offcanvas">
-        Aplicar
-      </button>
+      <div id="menuMobileConteudo"></div>
     </div>
   </div>
-</div>
-        <!-- RODAPÉ -->
 
-        <footer class="bg-light text-muted mt-5 pt-5 border-top">
-          <div class="container">
-            <div class="row">
 
-              <div class="col-lg-3 col-md-6 mb-4">
-                <h5 class="text-uppercase fw-bold mb-3 text-dark">
-                  <i class="bi bi-shop me-2"></i><span id="footer_nome_loja">Loja</span>
-                </h5>
-                <p id="footer_descricao" class="small">
-                  Carregando informações...
-                </p>
+  <!-- ✅ OFFCANVAS: Filtros no Mobile (TELA CHEIA) -->
+  <div class="offcanvas offcanvas-start w-100" tabindex="-1" id="offcanvasFiltros"
+    aria-labelledby="offcanvasFiltrosLabel">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title" id="offcanvasFiltrosLabel">Filtrar</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+    </div>
 
-                <div class="mt-3">
-                  <a id="footer_insta" href="#" class="btn btn-outline-secondary btn-sm rounded-circle me-2 d-none" target="_blank"><i class="bi bi-instagram"></i></a>
-                  <a id="footer_face" href="#" class="btn btn-outline-secondary btn-sm rounded-circle d-none" target="_blank"><i class="bi bi-facebook"></i></a>
-                </div>
-              </div>
+    <div class="offcanvas-body">
+      <div id="filtros_atributos_mobile"></div>
 
-              <div class="col-lg-2 col-md-6 mb-4">
-                <h6 class="text-uppercase fw-bold mb-3 text-dark">Navegação</h6>
-                <ul class="list-unstyled small">
-                  <li class="mb-2"><a href="#" class="text-decoration-none text-muted" onclick="limpar_filtros()">Ver Produtos</a></li>
-                  <li class="mb-2"><a href="#" class="text-decoration-none text-muted" onclick="abrirIdentificacao()">Meus Pedidos</a></li>
-                  <li class="mb-2"><a href="#" class="text-decoration-none text-muted" onclick="window.scrollTo({top:0, behavior:'smooth'})">Voltar ao Topo</a></li>
-                </ul>
-              </div>
+      <div class="d-flex gap-2 mt-3">
+        <button class="btn btn-outline-secondary w-50" onclick="limparFiltrosAtributos(); atualizarBadgeFiltros();">
+          Limpar
+        </button>
+        <button class="btn btn-primary w-50" data-bs-dismiss="offcanvas">
+          Aplicar
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- RODAPÉ -->
 
-              <!-- ✅ Ajuste: col-lg-2 (antes era col-lg-3) para caber no grid -->
-              <div class="col-lg-2 col-md-6 mb-4" id="col_info_site" style="display:none;">
-                <h6 class="text-uppercase fw-bold mb-3 text-dark">Informações</h6>
-                <ul class="list-unstyled small mb-0" id="lista_info_site">
-                  <!-- preenchido via app.js conforme CONFIG -->
-                </ul>
-              </div>
+  <footer class="bg-light text-muted mt-5 pt-5 border-top">
+    <div class="container">
+      <div class="row">
 
-              <!-- ✅ Ajuste: col-lg-3 (antes era col-lg-4) para caber no grid -->
-              <div class="col-lg-3 col-md-6 mb-4">
-                <h6 class="text-uppercase fw-bold mb-3 text-dark">Atendimento</h6>
+        <div class="col-lg-3 col-md-6 mb-4">
+          <h5 class="text-uppercase fw-bold mb-3 text-dark">
+            <i class="bi bi-shop me-2"></i><span id="footer_nome_loja">Loja</span>
+          </h5>
+          <p id="footer_descricao" class="small">
+            Carregando informações...
+          </p>
 
-                <p class="mb-2">
-                  <i class="bi bi-whatsapp me-2 text-success"></i>
-                  <a id="footer_whats" href="#" target="_blank" class="text-decoration-none text-dark fw-bold">
-                    <span id="footer_tel">...</span>
-                  </a>
-                </p>
-                <p class="mb-2"><i class="bi bi-envelope me-2 text-primary"></i> <span id="footer_email">...</span></p>
-                <p id="box_horario" class="d-none small text-muted mb-3">
-                  <i class="bi bi-clock me-2"></i> <span id="footer_horario"></span>
-                </p>
+          <div class="mt-3">
+            <a id="footer_insta" href="#" class="btn btn-outline-secondary btn-sm rounded-circle me-2 d-none"
+              target="_blank"><i class="bi bi-instagram"></i></a>
+            <a id="footer_face" href="#" class="btn btn-outline-secondary btn-sm rounded-circle d-none"
+              target="_blank"><i class="bi bi-facebook"></i></a>
+          </div>
+        </div>
 
-                <div class="border-top pt-2 mt-2">
-                  <small class="d-block fw-bold text-dark">Dados da Empresa:</small>
-                  <small class="d-block text-muted"><i class="bi bi-geo-alt me-1"></i> <span id="footer_endereco">...</span></small>
-                  <small id="footer_cnpj" class="d-block text-muted mt-1"></small>
-                </div>
-              </div>
+        <div class="col-lg-2 col-md-6 mb-4">
+          <h6 class="text-uppercase fw-bold mb-3 text-dark">Navegação</h6>
+          <ul class="list-unstyled small">
+            <li class="mb-2"><a href="#" class="text-decoration-none text-muted" onclick="limpar_filtros()">Ver
+                Produtos</a></li>
+            <li class="mb-2"><a href="#" class="text-decoration-none text-muted" onclick="abrirIdentificacao()">Meus
+                Pedidos</a></li>
+            <li class="mb-2"><a href="#" class="text-decoration-none text-muted"
+                onclick="window.scrollTo({top:0, behavior:'smooth'})">Voltar ao Topo</a></li>
+          </ul>
+        </div>
 
-              <!-- ✅ Mantido: Segurança continua col-lg-3 -->
-              <div class="col-lg-3 col-md-12 mb-4">
-                <h6 class="text-uppercase fw-bold mb-3 text-dark">Segurança</h6>
+        <!-- ✅ Ajuste: col-lg-2 (antes era col-lg-3) para caber no grid -->
+        <div class="col-lg-2 col-md-6 mb-4" id="col_info_site" style="display:none;">
+          <h6 class="text-uppercase fw-bold mb-3 text-dark">Informações</h6>
+          <ul class="list-unstyled small mb-0" id="lista_info_site">
+            <!-- preenchido via app.js conforme CONFIG -->
+          </ul>
+        </div>
 
-                <div class="d-flex align-items-center mb-3 bg-white p-2 rounded border shadow-sm">
-                  <i class="bi bi-shield-lock-fill text-success fs-1 me-2"></i>
-                  <div style="line-height: 1.2;">
-                    <strong class="d-block text-dark small">Site Protegido</strong>
-                    <small style="font-size: 0.75rem;">Ambiente auditado.</small>
-                  </div>
-                </div>
+        <!-- ✅ Ajuste: col-lg-3 (antes era col-lg-4) para caber no grid -->
+        <div class="col-lg-3 col-md-6 mb-4">
+          <h6 class="text-uppercase fw-bold mb-3 text-dark">Atendimento</h6>
 
-                <div class="mb-2">
-                  <p class="small fw-bold mb-1">Aceitamos:</p>
-                  <div class="d-flex gap-2 text-secondary fs-4">
-                    <i class="bi bi-credit-card-2-front" title="Cartão"></i>
-                    <i class="bi bi-qr-code-scan" title="Pix"></i>
-                    <i class="bi bi-upc-scan" title="Boleto"></i>
-                  </div>
-                </div>
-              </div>
+          <p class="mb-2">
+            <i class="bi bi-whatsapp me-2 text-success"></i>
+            <a id="footer_whats" href="#" target="_blank" class="text-decoration-none text-dark fw-bold">
+              <span id="footer_tel">...</span>
+            </a>
+          </p>
+          <p class="mb-2"><i class="bi bi-envelope me-2 text-primary"></i> <span id="footer_email">...</span></p>
+          <p id="box_horario" class="d-none small text-muted mb-3">
+            <i class="bi bi-clock me-2"></i> <span id="footer_horario"></span>
+          </p>
 
+          <div class="border-top pt-2 mt-2">
+            <small class="d-block fw-bold text-dark">Dados da Empresa:</small>
+            <small class="d-block text-muted"><i class="bi bi-geo-alt me-1"></i> <span
+                id="footer_endereco">...</span></small>
+            <small id="footer_cnpj" class="d-block text-muted mt-1"></small>
+          </div>
+        </div>
+
+        <!-- ✅ Mantido: Segurança continua col-lg-3 -->
+        <div class="col-lg-3 col-md-12 mb-4">
+          <h6 class="text-uppercase fw-bold mb-3 text-dark">Segurança</h6>
+
+          <div class="d-flex align-items-center mb-3 bg-white p-2 rounded border shadow-sm">
+            <i class="bi bi-shield-lock-fill text-success fs-1 me-2"></i>
+            <div style="line-height: 1.2;">
+              <strong class="d-block text-dark small">Site Protegido</strong>
+              <small style="font-size: 0.75rem;">Ambiente auditado.</small>
             </div>
           </div>
 
-          <div class="bg-dark text-light py-3 mt-4">
-            <div class="container">
-              <div class="row align-items-center">
-
-                <div class="col-md-6 text-center text-md-start mb-2 mb-md-0">
-                  <p class="mb-0 small">
-                    &copy; <span id="ano_atual">2026</span> <strong id="footer_copy_nome">Loja</strong>.
-                    Todos os direitos reservados.
-                  </p>
-                </div>
-
-                <div class="col-md-6 text-center text-md-end">
-                  <a href="https://wa.me/5527996962395" target="_blank" class="text-decoration-none text-light small opacity-75 hover-opacity-100">
-                    <i class="bi bi-code-slash me-1"></i> Tecnologia: <strong>Danilo Bertolani</strong>
-                  </a>
-                </div>
-
-              </div>
+          <div class="mb-2">
+            <p class="small fw-bold mb-1">Aceitamos:</p>
+            <div class="d-flex gap-2 text-secondary fs-4">
+              <i class="bi bi-credit-card-2-front" title="Cartão"></i>
+              <i class="bi bi-qr-code-scan" title="Pix"></i>
+              <i class="bi bi-upc-scan" title="Boleto"></i>
             </div>
           </div>
+        </div>
 
-          <!-- ✅ Modal: Informações (Trocas, Privacidade, Entrega etc.) -->
-          <div class="modal fade" id="modalInfoSite" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg modal-fullscreen-sm-down">
-              <div class="modal-content">
-                <div class="modal-header bg-light">
-                  <h5 class="modal-title" id="modalInfoSiteTitulo">Informações</h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                </div>
-                <div class="modal-body">
-                  <div id="modalInfoSiteConteudo" class="small text-muted" style="white-space: normal;"></div>
-                </div>
-                <div class="modal-footer">
-                  <button class="btn btn-secondary" data-bs-dismiss="modal">Voltar</button>
-                </div>
-              </div>
-            </div>
+      </div>
+    </div>
+
+    <div class="bg-dark text-light py-3 mt-4">
+      <div class="container">
+        <div class="row align-items-center">
+
+          <div class="col-md-6 text-center text-md-start mb-2 mb-md-0">
+            <p class="mb-0 small">
+              &copy; <span id="ano_atual">2026</span> <strong id="footer_copy_nome">Loja</strong>.
+              Todos os direitos reservados.
+            </p>
           </div>
 
-        </footer>
+          <div class="col-md-6 text-center text-md-end">
+            <a href="https://wa.me/5527996962395" target="_blank"
+              class="text-decoration-none text-light small opacity-75 hover-opacity-100">
+              <i class="bi bi-code-slash me-1"></i> Tecnologia: <strong>Danilo Bertolani</strong>
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ✅ Modal: Informações (Trocas, Privacidade, Entrega etc.) -->
+    <div class="modal fade" id="modalInfoSite" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg modal-fullscreen-sm-down">
+        <div class="modal-content">
+          <div class="modal-header bg-light">
+            <h5 class="modal-title" id="modalInfoSiteTitulo">Informações</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+          </div>
+          <div class="modal-body">
+            <div id="modalInfoSiteConteudo" class="small text-muted" style="white-space: normal;"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">Voltar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </footer>
 
 
-<!-- 1) Dependências -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-<script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://sdk.mercadopago.com/js/v2"></script>
+  <!-- 1) Dependências -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script crossorigin="anonymous"
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://sdk.mercadopago.com/js/v2"></script>
 
-<!-- 2) Seus arquivos (ordem GARANTIDA) -->
-<script src="js/config.js?v=20260205-1"></script>
-<script src="js/app.js?v=2026-02-05_v9_menu_desktop"></script>
+  <!-- 2) Seus arquivos (ordem GARANTIDA) -->
+  <script src="js/config.js?v=20260205-1"></script>
+  <script src="js/app.js?v=2026-02-05_v9_menu_desktop"></script>
 
 </body>
+
 </html>
