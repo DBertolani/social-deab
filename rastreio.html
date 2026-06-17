@@ -298,6 +298,21 @@
     @media(min-width: 600px) {
       .input-group { grid-template-columns: 1fr 1fr auto; }
     }
+      
+  .btn-external {
+      display: inline-block;
+      background: var(--primary);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      transition: background 0.2s;
+      margin-top: 10px;
+    }
+    .btn-external:hover { background: #1d4ed8; color: #fff; }
+    
   </style>
 </head>
 <body>
@@ -407,161 +422,138 @@
   }
 
   function validarCodigo(code){
-    return /^[A-Z]{2}\d{9}[A-Z]{2}$/.test(String(code||"").trim().toUpperCase());
+    // Agora aceita qualquer código com 5 ou mais caracteres
+    return code.length >= 5; 
   }
 
-  function renderTimeline(eventos, codigoObj){
-    if(!eventos || !eventos.length){
-      return `<div class="msg-box msg-info">Nenhuma movimentação encontrada.</div>`;
-    }
+function renderTimeline(eventos, isExternal){
+  // Se for transportadora externa (Jadlog/Loggi), não mostra timeline (apenas o botão)
+  if(isExternal) return ''; 
 
-    const htmlEventos = eventos.map((ev, idx) => {
-      const isLatest = idx === 0; // O primeiro é o mais recente
-      const icon = getIconeStatus(ev.status || "");
-      
-      return `
-        <div class="event ${isLatest ? 'latest' : ''}">
-          <div class="dot"></div>
-          
-          <div class="ev-header">
-            <div class="ev-title">
-               ${isLatest ? icon : ''} ${ev.status || ""}
-            </div>
-            <div class="ev-date">${formatarDataBR(ev.data)}</div>
-          </div>
-          
-          ${ev.detalhe ? `<div class="ev-detail">${ev.detalhe}</div>` : ""}
-          
-          <div class="ev-place-wrapper">
-             ${ev.origem ? `<div class="ev-location"><i class="bi bi-geo-alt"></i> ${ev.origem} ${ev.destino ? ' ➔ ' + ev.destino : ''}</div>` : ""}
-          </div>
-        </div>
-      `;
-    }).join("");
+  // Caso Correios sem eventos ainda
+  if(!eventos || !eventos.length){
+    return `<div class="msg-box msg-info">
+              <i class="bi bi-box-seam" style="font-size: 24px; color: var(--primary); display:block; margin-bottom: 10px;"></i>
+              <strong>Objeto postado recentemente!</strong><br>
+              O sistema da transportadora leva algumas horas para sincronizar o status. Tente atualizar mais tarde.
+            </div>`;
+  }
 
+  const htmlEventos = eventos.map((ev, idx) => {
+    const isLatest = idx === 0; 
+    const icon = getIconeStatus(ev.status || "");
+    
     return `
-      <div class="timeline">
-        ${htmlEventos}
+      <div class="event ${isLatest ? 'latest' : ''}">
+        <div class="dot"></div>
+        <div class="ev-header">
+          <div class="ev-title">${isLatest ? icon : ''} ${ev.status || ""}</div>
+          <div class="ev-date">${formatarDataBR(ev.data)}</div>
+        </div>
+        ${ev.detalhe ? `<div class="ev-detail">${ev.detalhe}</div>` : ""}
+        <div class="ev-place-wrapper">
+           ${ev.origem ? `<div class="ev-location"><i class="bi bi-geo-alt"></i> ${ev.origem} ${ev.destino ? ' ➔ ' + ev.destino : ''}</div>` : ""}
+        </div>
       </div>
     `;
+  }).join("");
+
+  return `<div class="timeline">${htmlEventos}</div>`;
+}
+  
+async function consultar(){
+  const saida = document.getElementById("saida");
+  const containerRes = document.getElementById("resultado-container");
+  
+  saida.innerHTML = "";
+  containerRes.classList.add("hidden");
+  containerRes.innerHTML = "";
+
+  let id = (document.getElementById("id").value || "").trim();
+  let code = (document.getElementById("code").value || "").trim().toUpperCase();
+
+  const idParam = qs("id");
+  const codeParam = qs("code");
+  if (!id && idParam) id = String(idParam).trim();
+  if (!code && codeParam) code = String(codeParam).trim().toUpperCase();
+
+  if(!id && !code) return; 
+
+  // Validação simples (apenas tamanho mínimo) para não travar Jadlog
+  if(code && code.length < 5){
+    saida.innerHTML = `<div class="msg-box msg-error">Código muito curto. Verifique o número digitado.</div>`;
+    return;
   }
 
-  async function consultar(){
-    const saida = document.getElementById("saida");
-    const containerRes = document.getElementById("resultado-container");
-    
-    // Reset visual
+  const script = await carregarConfigAuto();
+  if(!script){
+    document.getElementById("boxScript").classList.remove("hidden");
+    return;
+  }
+
+  saida.innerHTML = `<div class="msg-box msg-info"><span class="spinner-border spinner-border-sm"></span> Buscando informações...</div>`;
+
+  try{
+    // 1) Busca via SuperFrete ID (opcional)
+    if(id){
+      const url1 = script + "?rota=rastreio&id=" + encodeURIComponent(id);
+      const r1 = await fetch(url1, {cache:"no-store"});
+      const j1 = await r1.json();
+      if(j1.ok && j1.tracking){
+        code = String(j1.tracking).trim().toUpperCase();
+        document.getElementById("code").value = code;
+      }
+    }
+
+    // 2) Busca Rastreio Universal (Correios ou Privado)
+    const url2 = script + "?rota=rastreio_wonca&code=" + encodeURIComponent(code);
+    const r2 = await fetch(url2, {cache:"no-store"});
+    const j2 = await r2.json();
+
+    if(!j2.ok){
+      saida.innerHTML = `<div class="msg-box msg-error">Não foi possível rastrear: ${j2.erro}</div>`;
+      return;
+    }
+
+    const eventos = j2.eventos || [];
+    const eventoAtual = eventos.length ? eventos[0] : {};
     saida.innerHTML = "";
-    containerRes.classList.add("hidden");
-    containerRes.innerHTML = "";
+    
+    // Se for transportadora privada, prepara o botão
+    const btnExterno = j2.is_external ? 
+      `<div style="text-align:center; margin-bottom:20px;">
+         <a href="${j2.link_rastreio}" target="_blank" class="btn-external"><i class="bi bi-box-arrow-up-right"></i> Rastrear no Site Oficial</a>
+       </div>` : '';
 
-    let id = (document.getElementById("id").value || "").trim();
-    let code = (document.getElementById("code").value || "").trim().toUpperCase();
+    containerRes.innerHTML = `
+      <div class="result-header">
+         <span class="tracking-code"><i class="bi bi-upc-scan"></i> ${j2.codigo || code}</span>
+         <button class="refresh-btn" onclick="consultar()"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
+      </div>
 
-    // URL Params override
-    const idParam = qs("id");
-    const codeParam = qs("code");
-    if (!id && idParam) id = String(idParam).trim();
-    if (!code && codeParam) code = String(codeParam).trim().toUpperCase();
+      <div class="kpi-grid">
+         <div class="kpi-card">
+            <span class="kpi-label">Status Atual</span>
+            <span class="kpi-value ${eventoAtual.status?.includes('Entregue') ? 'status-highlight' : ''}">
+              ${eventos.length ? eventoAtual.status : "Aguardando Sistema"}
+            </span>
+         </div>
+         <div class="kpi-card">
+            <span class="kpi-label">Transportadora</span>
+            <span class="kpi-value">${j2.transportadora || "Correios"}</span>
+         </div>
+      </div>
 
-    if(!id && !code){
-      // Não mostra erro se estiver vazio ao abrir, apenas espera o usuário digitar
-      return; 
-    }
+      ${btnExterno}
+      ${renderTimeline(eventos, j2.is_external)}
+    `;
+    
+    containerRes.classList.remove("hidden");
 
-    if(code && !validarCodigo(code)){
-      saida.innerHTML = `<div class="msg-box msg-error">Código de rastreio inválido.<br><small>Formato esperado: AA123456789BR</small></div>`;
-      return;
-    }
-
-    const script = await carregarConfigAuto();
-    if(!script){
-      document.getElementById("boxScript").classList.remove("hidden");
-      return;
-    }
-
-    saida.innerHTML = `<div class="msg-box msg-info"><span class="spinner-border spinner-border-sm"></span> Buscando informações...</div>`;
-
-    try{
-      // 1) Busca via SuperFrete ID se houver
-      if(id){
-        const url1 = script + "?rota=rastreio&id=" + encodeURIComponent(id);
-        const r1 = await fetch(url1, {cache:"no-store"});
-        const j1 = await r1.json();
-
-        if(!j1.ok){
-          saida.innerHTML = `<div class="msg-box msg-error">Erro ao buscar etiqueta: ${j1.erro}</div>`;
-          return;
-        }
-
-        if(j1.tracking){
-          code = String(j1.tracking).trim().toUpperCase();
-          document.getElementById("code").value = code;
-        }
-      }
-
-      if(!code){
-        saida.innerHTML = `<div class="msg-box msg-info">Etiqueta gerada, mas ainda sem código de rastreio nos Correios. Tente mais tarde.</div>`;
-        return;
-      }
-
-      // 2) Busca Histórico Correios (Wonca)
-      const url2 = script + "?rota=rastreio_wonca&code=" + encodeURIComponent(code);
-      const r2 = await fetch(url2, {cache:"no-store"});
-      const j2 = await r2.json();
-
-      if(!j2.ok){
-        saida.innerHTML = `<div class="msg-box msg-error">Não foi possível rastrear: ${j2.erro}</div>`;
-        return;
-      }
-
-      const previsao = j2.previsao ? String(j2.previsao) : "A calcular";
-      const eventos = j2.eventos || [];
-      const eventoAtual = eventos.length ? eventos[0] : {};
-      
-      // Limpa loading
-      saida.innerHTML = "";
-      
-      // Monta o Card de Resultado
-      containerRes.innerHTML = `
-        <div class="result-header">
-           <span class="tracking-code"><i class="bi bi-upc-scan"></i> ${j2.codigo || code}</span>
-           <button class="refresh-btn" onclick="consultar()"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
-        </div>
-
-        <div class="kpi-grid">
-           <div class="kpi-card">
-              <span class="kpi-label">Status Atual</span>
-              <span class="kpi-value ${eventoAtual.status?.includes('Entregue') ? 'status-highlight' : ''}">
-                ${eventoAtual.status || "Aguardando"}
-              </span>
-           </div>
-           <div class="kpi-card">
-              <span class="kpi-label">Previsão</span>
-              <span class="kpi-value">${previsao}</span>
-           </div>
-        </div>
-
-        ${renderTimeline(eventos)}
-      `;
-      
-      containerRes.classList.remove("hidden");
-
-    }catch(e){
-      saida.innerHTML = `<div class="msg-box msg-error">Erro de conexão: ${e.message}</div>`;
-    }
+  }catch(e){
+    saida.innerHTML = `<div class="msg-box msg-error">Erro de conexão: ${e.message}</div>`;
   }
-
-  // Inicialização
-  const idParamInitial = qs("id");
-  const codeParamInitial = qs("code");
-  if (idParamInitial) document.getElementById("id").value = idParamInitial;
-  if (codeParamInitial) document.getElementById("code").value = codeParamInitial;
-
-  if (idParamInitial || codeParamInitial) {
-     consultar();
-  }
-  carregarConfigAuto();
+}
 </script>
 
 </body>
