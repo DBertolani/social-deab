@@ -447,6 +447,12 @@
       imgContainer.style.background = "transparent";
       imgContainer.style.boxShadow = "none";
       document.getElementById("og-image").setAttribute("content", loja.logoLoja);
+
+      // 2. ADICIONE ISSO PARA O FAVICON:
+      const favicon = document.querySelector('link[rel="icon"]');
+      if (favicon) {
+          favicon.href = loja.logoLoja; // Usa a mesma imagem da logo como favicon
+      }
     }
     document.getElementById("og-url").setAttribute("content", window.location.href);
   }
