@@ -359,21 +359,21 @@
 
 <div class="container">
   
-  <div class="search-card">
-    <div class="input-group">
-      <input id="id" placeholder="ID SuperFrete (Opcional)">
-      <input id="code" placeholder="Código Correios (ex: AA123456789BR)">
-      <button onclick="consultar()"><i class="bi bi-search"></i> Buscar</button>
-    </div>
-
-    <div id="saida"></div>
-
-    <div id="boxScript" class="config-box hidden">
-      <p style="margin:0 0 8px 0; font-size:13px; font-weight:bold">Configuração Inicial Necessária</p>
-      <input id="script" placeholder="Cole a URL do seu WebApp (Script Google)">
-      <button onclick="salvarScript()">Salvar Configuração</button>
-    </div>
+<div class="search-card">
+  <div class="input-group">
+    <!-- Removi o ID e renomeei o código para ser único -->
+    <input id="code" placeholder="Ex: AA123456789BR ou código Jadlog">
+    <button onclick="consultar()"><i class="bi bi-search"></i> Buscar</button>
   </div>
+
+  <div id="saida"></div>
+
+  <div id="boxScript" class="config-box hidden">
+    <p style="margin:0 0 8px 0; font-size:13px; font-weight:bold">Configuração Inicial</p>
+    <input id="script" placeholder="Cole a URL do seu WebApp">
+    <button onclick="salvarScript()">Salvar</button>
+  </div>
+</div>
 
   <div id="resultado-container" class="search-card hidden">
     </div>
@@ -491,7 +491,7 @@ async function consultar() {
   const saida = document.getElementById("saida");
   const containerRes = document.getElementById("resultado-container");
 
-// Limpa tudo e mostra o carregando com o spinner
+  // Limpa tudo e mostra o carregando com o spinner
   saida.innerHTML = `
     <div class="loader-wrapper">
       <div class="spinner"></div>
@@ -502,7 +502,9 @@ async function consultar() {
   containerRes.classList.add("hidden");
   containerRes.innerHTML = "";
 
-  let id = (document.getElementById("id").value || "").trim();
+  // Busca valores (ID é opcional/retrocompatível, Code é o principal)
+  const idEl = document.getElementById("id");
+  let id = idEl ? idEl.value.trim() : "";
   let code = (document.getElementById("code").value || "").trim().toUpperCase();
 
   const idParam = qs("id");
@@ -510,19 +512,21 @@ async function consultar() {
   if (!id && idParam) id = String(idParam).trim();
   if (!code && codeParam) code = String(codeParam).trim().toUpperCase();
 
-  if (!id && !code) return;
+  if (!id && !code) {
+    saida.innerHTML = "";
+    return;
+  }
 
   const script = await carregarConfigAuto();
   if (!script) {
     document.getElementById("boxScript").classList.remove("hidden");
+    saida.innerHTML = "";
     return;
   }
 
-  /// saida.innerHTML = `<div class="msg-box msg-info"><span class="spinner-border spinner-border-sm"></span> Buscando informações...</div>`;
-
   try {
     // 1) Busca via SuperFrete ID (se fornecido)
-    if (id) {
+    if (id && !code) {
       const url1 = script + "?rota=rastreio&id=" + encodeURIComponent(id);
       const r1 = await fetch(url1, { cache: "no-store" });
       const j1 = await r1.json();
@@ -542,54 +546,59 @@ async function consultar() {
       return;
     }
 
-    // --- AJUSTE PARA ATUALIZAR A URL ---
+    // Ajuste da URL
     const novaUrl = window.location.origin + window.location.pathname + "?code=" + encodeURIComponent(code);
     window.history.pushState({ path: novaUrl }, '', novaUrl);
-    // -----------------------------------------------
 
-    // Lógica para quando o código existe mas não tem eventos (ex: não postado ou inválido)
     const eventos = j2.eventos || [];
-    const naoPostado = !j2.is_external && eventos.length === 0;
-
     saida.innerHTML = "";
 
     const urlRastreioOficial = j2.link_oficial || j2.link_rastreio || `https://linketrack.com/track?utm_source=idea.acessorios&custom=dea&codigo=${code}`;
 
-// ... dentro da função consultar(), no trecho do containerRes.innerHTML ...
-
-containerRes.innerHTML = `
-  <div class="result-header">
-     <span class="tracking-code"><i class="bi bi-upc-scan"></i> ${j2.codigo || code}</span>
-     <button class="refresh-btn" onclick="consultar()"><i class="bi bi-arrow-clockwise"></i></button>
-  </div>
-
-  ${j2.is_external ? `
-    <div style="margin-bottom:20px;">
-       <p style="font-size: 13px; color: #666; margin-bottom: 10px; text-align: center;">Acompanhamento em tempo real:</p>
-       <div style="height: 600px; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: #fff;">
-         <iframe src="${urlRastreioOficial}" style="width:100%; height:100%; border: none;"></iframe>
-       </div>
-       
-       <div style="text-align:center; margin-top:15px;">
-         <a href="${urlRastreioOficial}" target="_blank" class="btn-external" style="background: var(--primary);">
-            <i class="bi bi-box-arrow-up-right"></i> Abrir em tela cheia
-         </a>
-         <button onclick="compartilharWhatsApp('${j2.codigo || code}', 'link')" 
-                 class="btn-external" style="background: #25d366; margin-left: 10px;">
+    // --- LÓGICA DE BOTÕES UNIFICADA ---
+    let botoesAcao = "";
+    if (j2.is_external) {
+      // Botões para Transportadoras Externas
+      botoesAcao = `
+        <div style="text-align:center; margin-bottom:20px; display: flex; justify-content: center; gap: 10px;">
+          <a href="${urlRastreioOficial}" target="_blank" class="btn-external" style="background: var(--primary);">
+            <i class="bi bi-box-arrow-up-right"></i> Tela Cheia
+          </a>
+          <button onclick="compartilharWhatsApp('${j2.codigo || code}', 'link')" 
+                  class="btn-external" style="background: #25d366;">
             <i class="bi bi-whatsapp"></i> Compartilhar Link
-         </button>
-       </div>
-    </div>
-  ` : `
-    <div style="text-align:center; margin-bottom:20px;">
-       <button onclick="compartilharWhatsApp('${j2.codigo || code}', '${eventos.length ? eventos[0].status : "Em trânsito"}')" 
-               class="btn-external" style="background: #25d366; border: none;">
-          <i class="bi bi-whatsapp"></i> Compartilhar Status
-       </button>
-    </div>
-    ${renderTimeline(eventos, j2.is_external)}
-  `}
-`;
+          </button>
+        </div>
+      `;
+    } else {
+      // Botões para Correios
+      botoesAcao = `
+        <div style="text-align:center; margin-bottom:20px;">
+          <button onclick="compartilharWhatsApp('${j2.codigo || code}', '${eventos.length ? eventos[0].status : "Em trânsito"}')" 
+                  class="btn-external" style="background: #25d366; border: none;">
+            <i class="bi bi-whatsapp"></i> Compartilhar Status
+          </button>
+        </div>
+      `;
+    }
+
+    // --- RENDERIZAÇÃO FINAL ---
+    containerRes.innerHTML = `
+      <div class="result-header">
+         <span class="tracking-code"><i class="bi bi-upc-scan"></i> ${j2.codigo || code}</span>
+         <button class="refresh-btn" onclick="consultar()"><i class="bi bi-arrow-clockwise"></i></button>
+      </div>
+
+      ${botoesAcao}
+
+      ${j2.is_external ? `
+        <div style="margin-bottom:20px;">
+           <div style="height: 600px; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: #fff;">
+             <iframe src="${urlRastreioOficial}" style="width:100%; height:100%; border: none;"></iframe>
+           </div>
+        </div>
+      ` : renderTimeline(eventos, j2.is_external)}
+    `;
 
     containerRes.classList.remove("hidden");
 
@@ -597,7 +606,6 @@ containerRes.innerHTML = `
     saida.innerHTML = `<div class="msg-box msg-error">Erro de conexão: ${e.message}</div>`;
   }
 }
-
 function compartilharWhatsApp(codigo, status) {
     const linkRastreio = window.location.origin + window.location.pathname + "?code=" + codigo;
     let mensagem = "";
