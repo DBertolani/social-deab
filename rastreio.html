@@ -18,7 +18,7 @@
   <meta name="theme-color" content="#2563eb" id="meta-theme">
   <meta name="robots" content="noindex,nofollow"/>
 
-  <link rel="icon" href="about:blank">
+  <link rel="icon" id="dynamic-favicon" href="">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -417,7 +417,8 @@
   }
 
   // --- LÓGICA DE IDENTIDADE (WHITE LABEL) ---
-function aplicarIdentidadeLoja(loja) {
+// --- LÓGICA DE IDENTIDADE (WHITE LABEL) ---
+  function aplicarIdentidadeLoja(loja) {
     if (!loja) return;
     
     // Cores
@@ -450,14 +451,23 @@ function aplicarIdentidadeLoja(loja) {
       document.getElementById("og-image").setAttribute("content", loja.logoLoja);
     }
 
-    // Favicon
+    // Favicon Dinâmico com quebra de cache severa (Força o navegador a mudar na hora)
     if (loja.favicon) {
-       const favicon = document.querySelector('link[rel="icon"]');
-       if (favicon) {
-           favicon.href = loja.favicon.includes("drive.google.com") 
-              ? "https://drive.google.com/thumbnail?id=" + extrairIdDriveConfigFrontend(loja.favicon) + "&sz=w64" 
-              : loja.favicon;
-       }
+       let urlFaviconFinal = loja.favicon.includes("drive.google.com") 
+          ? "https://drive.google.com/thumbnail?id=" + extrairIdDriveConfigFrontend(loja.favicon) + "&sz=w64" 
+          : loja.favicon;
+
+       // Remove a tag antiga se houver para evitar travas do navegador
+       const antigoFavicon = document.getElementById("dynamic-favicon") || document.querySelector('link[rel="icon"]');
+       if (antigoFavicon) antigoFavicon.remove();
+
+       // Cria uma tag novinha em folha injetando uma versão única baseada no tempo
+       const novoFavicon = document.createElement('link');
+       novoFavicon.id = "dynamic-favicon";
+       novoFavicon.rel = "icon";
+       novoFavicon.type = "image/png";
+       novoFavicon.href = urlFaviconFinal + (urlFaviconFinal.includes('?') ? '&' : '?') + "v=" + new Date().getTime();
+       document.getElementsByTagName('head')[0].appendChild(novoFavicon);
     }
     
     document.getElementById("og-url").setAttribute("content", window.location.href);
