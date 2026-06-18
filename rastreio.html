@@ -17,7 +17,8 @@
   
   <meta name="theme-color" content="#2563eb" id="meta-theme">
   <meta name="robots" content="noindex,nofollow"/>
-  
+
+  <link rel="icon" href="about:blank">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -448,12 +449,17 @@
       imgContainer.style.boxShadow = "none";
       document.getElementById("og-image").setAttribute("content", loja.logoLoja);
 
-      // 2. ADICIONE ISSO PARA O FAVICON:
-      const favicon = document.querySelector('link[rel="icon"]');
-      if (favicon) {
-          favicon.href = loja.logoLoja; // Usa a mesma imagem da logo como favicon
-      }
-    }
+      // 2. PARA O FAVICON:
+        if (loja.favicon) {
+            const favicon = document.querySelector('link[rel="icon"]');
+            if (favicon) {
+                // Se for do Drive, precisamos garantir que ele gere o link correto da imagem
+                // A lógica do extrairIdDriveConfigFrontend que já temos serve para isso
+                favicon.href = loja.favicon.includes("drive.google.com") 
+                               ? "https://drive.google.com/thumbnail?id=" + extrairIdDriveConfigFrontend(loja.favicon) + "&sz=w64" 
+                               : loja.favicon;
+            }
+        }
     document.getElementById("og-url").setAttribute("content", window.location.href);
   }
 
