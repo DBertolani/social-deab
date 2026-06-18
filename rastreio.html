@@ -517,7 +517,7 @@ async function consultar() {
 
     const urlRastreioOficial = j2.link_oficial || j2.link_rastreio || `https://linketrack.com/track?utm_source=idea.acessorios&custom=dea&codigo=${code}`;
 
-    containerRes.innerHTML = `
+containerRes.innerHTML = `
       <div class="result-header">
          <span class="tracking-code"><i class="bi bi-upc-scan"></i> ${j2.codigo || code}</span>
          <button class="refresh-btn" onclick="consultar()"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
@@ -527,7 +527,7 @@ async function consultar() {
          <div class="kpi-card">
             <span class="kpi-label">Status</span>
             <span class="kpi-value ${naoPostado ? 'status-warning' : ''}">
-              ${naoPostado ? "Aguardando Postagem" : (eventos.length ? eventos[0].status : "Aguardando Sistema")}
+              ${naoPostado ? "Aguardando Postagem" : (eventos.length ? eventos[0].status : "Aguardando Atualização")}
             </span>
          </div>
          <div class="kpi-card">
@@ -536,11 +536,17 @@ async function consultar() {
          </div>
       </div>
 
-      <div style="text-align:center; margin-bottom:25px;">
-         <a href="${urlRastreioOficial}" target="_blank" class="btn-external" style="background: #e11d48; border: none; box-shadow: 0 4px 6px -1px rgba(225, 29, 72, 0.3);">
-            <i class="bi bi-box-arrow-up-right"></i> Ver Status Oficial Detalhado
-         </a>
-      </div>
+      ${j2.is_external ? `
+        <div style="text-align:center; margin-bottom:25px;">
+           <a href="${urlRastreioOficial}" target="_blank" class="btn-external" style="background: #e11d48; border: none; box-shadow: 0 4px 6px -1px rgba(225, 29, 72, 0.3);">
+              <i class="bi bi-box-arrow-up-right"></i> Ver Status Oficial Detalhado
+           </a>
+        </div>
+      ` : `
+        <div style="text-align:center; margin-bottom:20px; font-size: 13px; color: var(--success); font-weight: 500;">
+           <i class="bi bi-check-circle-fill"></i> Rastreio atualizado no seu site.
+        </div>
+      `}
 
       ${renderTimeline(eventos, j2.is_external)}
     `;
