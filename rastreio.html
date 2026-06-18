@@ -519,11 +519,8 @@ async function consultar(){
     const eventoAtual = eventos.length ? eventos[0] : {};
     saida.innerHTML = "";
     
-    // Se for transportadora privada, prepara o botão
-    const btnExterno = j2.is_external ? 
-      `<div style="text-align:center; margin-bottom:20px;">
-         <a href="${j2.link_rastreio}" target="_blank" class="btn-external"><i class="bi bi-box-arrow-up-right"></i> Rastrear no Site Oficial</a>
-       </div>` : '';
+    // Define dinamicamente o link oficial (seja da Frenet/Correios para Correios ou link da Jadlog)
+    const urlRastreioOficial = j2.link_oficial || j2.link_rastreio || `https://rastreio.correios.com.br/app/resultado.php?objeto=${code}`;
 
     containerRes.innerHTML = `
       <div class="result-header">
@@ -544,7 +541,12 @@ async function consultar(){
          </div>
       </div>
 
-      ${btnExterno}
+      <div style="text-align:center; margin-bottom:25px;">
+         <a href="${urlRastreioOficial}" target="_blank" class="btn-external" style="background: #e11d48; border: none; box-shadow: 0 4px 6px -1px rgba(225, 29, 72, 0.3);">
+            <i class="bi bi-box-arrow-up-right"></i> Ver Status Oficial Detalhado
+         </a>
+      </div>
+
       ${renderTimeline(eventos, j2.is_external)}
     `;
     
