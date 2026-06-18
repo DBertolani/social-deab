@@ -461,10 +461,10 @@ function renderTimeline(eventos, isExternal){
   return `<div class="timeline">${htmlEventos}</div>`;
 }
   
-async function consultar(){
+async function consultar() {
   const saida = document.getElementById("saida");
   const containerRes = document.getElementById("resultado-container");
-  
+
   saida.innerHTML = "";
   containerRes.classList.add("hidden");
   containerRes.innerHTML = "";
@@ -477,49 +477,44 @@ async function consultar(){
   if (!id && idParam) id = String(idParam).trim();
   if (!code && codeParam) code = String(codeParam).trim().toUpperCase();
 
-  if(!id && !code) return; 
-
-  // Validação simples (apenas tamanho mínimo) para não travar Jadlog
-  if(code && code.length < 5){
-    saida.innerHTML = `<div class="msg-box msg-error">Código muito curto. Verifique o número digitado.</div>`;
-    return;
-  }
+  if (!id && !code) return;
 
   const script = await carregarConfigAuto();
-  if(!script){
+  if (!script) {
     document.getElementById("boxScript").classList.remove("hidden");
     return;
   }
 
   saida.innerHTML = `<div class="msg-box msg-info"><span class="spinner-border spinner-border-sm"></span> Buscando informações...</div>`;
 
-  try{
-    // 1) Busca via SuperFrete ID (opcional)
-    if(id){
+  try {
+    // 1) Busca via SuperFrete ID (se fornecido)
+    if (id) {
       const url1 = script + "?rota=rastreio&id=" + encodeURIComponent(id);
-      const r1 = await fetch(url1, {cache:"no-store"});
+      const r1 = await fetch(url1, { cache: "no-store" });
       const j1 = await r1.json();
-      if(j1.ok && j1.tracking){
+      if (j1.ok && j1.tracking) {
         code = String(j1.tracking).trim().toUpperCase();
         document.getElementById("code").value = code;
       }
     }
 
-    // 2) Busca Rastreio Universal (Correios ou Privado)
+    // 2) Busca Rastreio Universal (Wonca)
     const url2 = script + "?rota=rastreio_wonca&code=" + encodeURIComponent(code);
-    const r2 = await fetch(url2, {cache:"no-store"});
+    const r2 = await fetch(url2, { cache: "no-store" });
     const j2 = await r2.json();
 
-    if(!j2.ok){
-      saida.innerHTML = `<div class="msg-box msg-error">Não foi possível rastrear: ${j2.erro}</div>`;
+    if (!j2.ok) {
+      saida.innerHTML = `<div class="msg-box msg-error">Não foi possível rastrear: ${j2.erro || "Código não encontrado"}</div>`;
       return;
     }
 
+    // Lógica para quando o código existe mas não tem eventos (ex: não postado ou inválido)
     const eventos = j2.eventos || [];
-    const eventoAtual = eventos.length ? eventos[0] : {};
+    const naoPostado = !j2.is_external && eventos.length === 0;
+
     saida.innerHTML = "";
-    
-    // Define dinamicamente o link oficial (seja da Frenet/Correios para Correios ou link da Jadlog)
+
     const urlRastreioOficial = j2.link_oficial || j2.link_rastreio || `https://linketrack.com/track?utm_source=idea.acessorios&custom=dea&codigo=${code}`;
 
     containerRes.innerHTML = `
@@ -530,9 +525,9 @@ async function consultar(){
 
       <div class="kpi-grid">
          <div class="kpi-card">
-            <span class="kpi-label">Status Atual</span>
-            <span class="kpi-value ${eventoAtual.status?.includes('Entregue') ? 'status-highlight' : ''}">
-              ${eventos.length ? eventoAtual.status : "Aguardando Sistema"}
+            <span class="kpi-label">Status</span>
+            <span class="kpi-value ${naoPostado ? 'status-warning' : ''}">
+              ${naoPostado ? "Aguardando Postagem" : (eventos.length ? eventos[0].status : "Aguardando Sistema")}
             </span>
          </div>
          <div class="kpi-card">
@@ -549,10 +544,10 @@ async function consultar(){
 
       ${renderTimeline(eventos, j2.is_external)}
     `;
-    
+
     containerRes.classList.remove("hidden");
 
-  }catch(e){
+  } catch (e) {
     saida.innerHTML = `<div class="msg-box msg-error">Erro de conexão: ${e.message}</div>`;
   }
 }
