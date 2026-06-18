@@ -560,6 +560,14 @@ containerRes.innerHTML = `
     saida.innerHTML = `<div class="msg-box msg-error">Erro de conexão: ${e.message}</div>`;
   }
 }
+
+function compartilharWhatsApp(codigo, status) {
+    const linkRastreio = window.location.origin + window.location.pathname + "?code=" + codigo;
+    const mensagem = `Olá! O status do seu pedido ${codigo} é: *${status}*. Você pode acompanhar detalhadamente aqui: ${linkRastreio}`;
+    const urlWpp = `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
+    window.open(urlWpp, '_blank');
+  }
+
 </script>
 
 </body>
