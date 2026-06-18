@@ -4,29 +4,25 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   
-  <title>Central de Rastreio | Acompanhe seu pedido</title>
-  <meta name="description" content="Acompanhe a entrega do seu pedido em tempo real. Rastreamento seguro, rápido e sem anúncios."/>
+  <!-- IDs para injeção dinâmica via JS -->
+  <title id="meta-title">Central de Rastreio</title>
+  <meta id="meta-desc" name="description" content="Acompanhe sua entrega."/>
   
+  <!-- OG Tags para WhatsApp/Facebook -->
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://social.deab.com.br/rastreio.html" />
-  <meta property="og:title" content="📦 Rastreie seu Pedido em Tempo Real" />
-  <meta property="og:description" content="Acompanhe o status da sua entrega de forma simples e rápida." />
+  <meta id="og-url" property="og:url" content="" />
+  <meta id="og-title" property="og:title" content="Central de Rastreio" />
+  <meta id="og-desc" property="og:description" content="Acompanhe sua entrega." />
+  <meta id="og-image" property="og:image" content="" />
   
-  <meta property="og:image" content="https://cdn-icons-png.flaticon.com/512/3063/3063822.png" />
-  <meta property="og:image:type" content="image/png" />
-  <meta property="og:image:width" content="512" />
-  <meta property="og:image:height" content="512" />
-  
-  <meta property="fb:app_id" content="123456789" /> 
-  
-  <meta name="theme-color" content="#2563eb"> 
+  <meta name="theme-color" content="#2563eb" id="meta-theme">
   <meta name="robots" content="noindex,nofollow"/>
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-
+  
   <style>
     :root {
       --bg: #f3f4f6;
@@ -374,6 +370,7 @@
 <script>
   const LS_KEY = "SCRIPT_URL";
 
+  // --- FUNÇÕES DE UTILIDADE E CONFIGURAÇÃO ---
   function getIconeStatus(status) {
     const s = status.toLowerCase();
     if (s.includes('entregue')) return '<i class="bi bi-check-circle-fill"></i>';
@@ -418,41 +415,47 @@
     return "";
   }
 
-  // --- LÓGICA NOVA DE CUSTOMIZAÇÃO SAAS (BRANCA/WHITE LABEL) ---
+  // --- LÓGICA DE IDENTIDADE (WHITE LABEL) ---
   function aplicarIdentidadeLoja(loja) {
     if (!loja) return;
     
-    // Atualiza Cores Dinamicamente
+    // Atualiza Cores
     if (loja.corPrimaria) {
       document.documentElement.style.setProperty('--primary', loja.corPrimaria);
       document.documentElement.style.setProperty('--primary-light', loja.corPrimaria + "1A"); 
+      document.querySelector('meta[name="theme-color"]').setAttribute("content", loja.corPrimaria);
     }
     
-    // Atualiza Título
+    // Atualiza Textos e Meta Tags
     if (loja.nomeLoja) {
       document.title = `Central de Rastreio | ${loja.nomeLoja}`;
       document.getElementById("loja-titulo-header").textContent = loja.nomeLoja;
+      document.getElementById("meta-title").textContent = loja.nomeLoja;
+      document.getElementById("og-title").setAttribute("content", loja.nomeLoja);
     }
     
     if (loja.descricaoLoja) {
       document.getElementById("loja-subtitulo-header").textContent = loja.descricaoLoja;
+      document.getElementById("meta-desc").setAttribute("content", loja.descricaoLoja);
+      document.getElementById("og-desc").setAttribute("content", loja.descricaoLoja);
     }
     
-    // Atualiza a Logo
+    // Atualiza Logo
     if (loja.logoLoja) {
       const imgContainer = document.getElementById("loja-logo-container");
       imgContainer.innerHTML = `<img src="${loja.logoLoja}" alt="Logo">`;
       imgContainer.style.background = "transparent";
       imgContainer.style.boxShadow = "none";
+      document.getElementById("og-image").setAttribute("content", loja.logoLoja);
     }
+    document.getElementById("og-url").setAttribute("content", window.location.href);
   }
 
-  // Busca config.json pra já pintar a página logo que carrega, antes da busca
   async function inicializarIdentidadeLoja() {
     const script = await carregarConfigAuto();
     if (!script) return;
     try {
-      const response = await fetch(script, { cache: "no-store" });
+      const response = await fetch(script + "?rota=config", { cache: "no-store" });
       const configPlanilha = await response.json();
       if (configPlanilha) {
         aplicarIdentidadeLoja({
@@ -462,10 +465,9 @@
           descricaoLoja: configPlanilha["DescricaoDoSite"]
         });
       }
-    } catch (e) {}
+    } catch (e) { console.error("Erro ao carregar configs da planilha", e); }
   }
 
-  // Auxiliar front-end pra extrair ID caso a Logo venha crua no config puro
   function extrairIdDriveConfigFrontend(url) {
     if (!url) return "";
     if (url.indexOf('id=') >= 0) return (url.split('id=')[1]).split('&')[0];
@@ -475,6 +477,7 @@
     return parts[5] || "";
   }
 
+  // --- LÓGICA DE RASTREIO (ORIGINAL) ---
   function formatarDataBR(dtStr){
     if(!dtStr) return "—";
     try{
@@ -490,174 +493,123 @@
 
   function validarCodigo(code){ return code.length >= 5; }
 
-function renderTimeline(eventos, isExternal){
-  if(isExternal) return ''; 
-
-  if(!eventos || !eventos.length){
-    return `<div class="msg-box msg-info">
-              <i class="bi bi-box-seam" style="font-size: 24px; color: var(--primary); display:block; margin-bottom: 10px;"></i>
-              <strong>Objeto postado recentemente!</strong><br>
-              O sistema da transportadora leva algumas horas para sincronizar o status. Tente atualizar mais tarde.
-            </div>`;
-  }
-
-  const htmlEventos = eventos.map((ev, idx) => {
-    const isLatest = idx === 0; 
-    const icon = getIconeStatus(ev.status || "");
-    
-    return `
-      <div class="event ${isLatest ? 'latest' : ''}">
-        <div class="dot"></div>
-        <div class="ev-header">
-          <div class="ev-title">${isLatest ? icon : ''} ${ev.status || ""}</div>
-          <div class="ev-date">${formatarDataBR(ev.data)}</div>
-        </div>
-        ${ev.detalhe ? `<div class="ev-detail">${ev.detalhe}</div>` : ""}
-        <div class="ev-place-wrapper">
-           ${ev.origem ? `<div class="ev-location"><i class="bi bi-geo-alt"></i> ${ev.origem} ${ev.destino ? ' ➔ ' + ev.destino : ''}</div>` : ""}
-        </div>
-      </div>
-    `;
-  }).join("");
-
-  return `<div class="timeline">${htmlEventos}</div>`;
-}
-  
-async function consultar() {
-  const saida = document.getElementById("saida");
-  const containerRes = document.getElementById("resultado-container");
-
-  saida.innerHTML = `
-    <div class="loader-wrapper">
-      <div class="spinner"></div>
-      <p style="font-weight: 500;">Consultando status do seu pedido...</p>
-    </div>
-  `;
-  
-  containerRes.classList.add("hidden");
-  containerRes.innerHTML = "";
-
-  const idEl = document.getElementById("id");
-  let id = idEl ? idEl.value.trim() : "";
-  let code = (document.getElementById("code").value || "").trim().toUpperCase();
-
-  const idParam = qs("id");
-  const codeParam = qs("code");
-  if (!id && idParam) id = String(idParam).trim();
-  if (!code && codeParam) code = String(codeParam).trim().toUpperCase();
-
-  if (!id && !code) {
-    saida.innerHTML = "";
-    return;
-  }
-
-  const script = await carregarConfigAuto();
-  if (!script) {
-    document.getElementById("boxScript").classList.remove("hidden");
-    saida.innerHTML = "";
-    return;
-  }
-
-  try {
-    if (id && !code) {
-      const url1 = script + "?rota=rastreio&id=" + encodeURIComponent(id);
-      const r1 = await fetch(url1, { cache: "no-store" });
-      const j1 = await r1.json();
-      if (j1.ok && j1.tracking) {
-        code = String(j1.tracking).trim().toUpperCase();
-        document.getElementById("code").value = code;
-      }
+  function renderTimeline(eventos, isExternal){
+    if(isExternal) return ''; 
+    if(!eventos || !eventos.length){
+      return `<div class="msg-box msg-info">
+                <i class="bi bi-box-seam" style="font-size: 24px; color: var(--primary); display:block; margin-bottom: 10px;"></i>
+                <strong>Objeto postado recentemente!</strong><br>
+                O sistema da transportadora leva algumas horas para sincronizar o status. Tente atualizar mais tarde.
+              </div>`;
     }
+    const htmlEventos = eventos.map((ev, idx) => {
+      const isLatest = idx === 0; 
+      const icon = getIconeStatus(ev.status || "");
+      return `
+        <div class="event ${isLatest ? 'latest' : ''}">
+          <div class="dot"></div>
+          <div class="ev-header">
+            <div class="ev-title">${isLatest ? icon : ''} ${ev.status || ""}</div>
+            <div class="ev-date">${formatarDataBR(ev.data)}</div>
+          </div>
+          ${ev.detalhe ? `<div class="ev-detail">${ev.detalhe}</div>` : ""}
+          <div class="ev-place-wrapper">
+             ${ev.origem ? `<div class="ev-location"><i class="bi bi-geo-alt"></i> ${ev.origem} ${ev.destino ? ' ➔ ' + ev.destino : ''}</div>` : ""}
+          </div>
+        </div>
+      `;
+    }).join("");
+    return `<div class="timeline">${htmlEventos}</div>`;
+  }
+  
+  async function consultar() {
+    const saida = document.getElementById("saida");
+    const containerRes = document.getElementById("resultado-container");
+    saida.innerHTML = `<div class="loader-wrapper"><div class="spinner"></div><p>Consultando status...</p></div>`;
+    containerRes.classList.add("hidden");
+    containerRes.innerHTML = "";
 
-    const url2 = script + "?rota=rastreio_wonca&code=" + encodeURIComponent(code);
-    const r2 = await fetch(url2, { cache: "no-store" });
-    const j2 = await r2.json();
+    const idEl = document.getElementById("id");
+    let id = idEl ? idEl.value.trim() : "";
+    let code = (document.getElementById("code").value || "").trim().toUpperCase();
 
-    if (!j2.ok) {
-      saida.innerHTML = `<div class="msg-box msg-error">Não foi possível rastrear: ${j2.erro || "Código não encontrado"}</div>`;
+    const idParam = qs("id");
+    const codeParam = qs("code");
+    if (!id && idParam) id = String(idParam).trim();
+    if (!code && codeParam) code = String(codeParam).trim().toUpperCase();
+
+    if (!id && !code) { saida.innerHTML = ""; return; }
+
+    const script = await carregarConfigAuto();
+    if (!script) {
+      document.getElementById("boxScript").classList.remove("hidden");
+      saida.innerHTML = "";
       return;
     }
 
-    // APLICA AS CORES LOGO DEPOIS DE CONSULTAR A WONCA
-    if (j2.loja) aplicarIdentidadeLoja(j2.loja);
+    try {
+      if (id && !code) {
+        const url1 = script + "?rota=rastreio&id=" + encodeURIComponent(id);
+        const r1 = await fetch(url1, { cache: "no-store" });
+        const j1 = await r1.json();
+        if (j1.ok && j1.tracking) {
+          code = String(j1.tracking).trim().toUpperCase();
+          document.getElementById("code").value = code;
+        }
+      }
 
-    const novaUrl = window.location.origin + window.location.pathname + "?code=" + encodeURIComponent(code);
-    window.history.pushState({ path: novaUrl }, '', novaUrl);
+      const url2 = script + "?rota=rastreio_wonca&code=" + encodeURIComponent(code);
+      const r2 = await fetch(url2, { cache: "no-store" });
+      const j2 = await r2.json();
 
-    const eventos = j2.eventos || [];
-    saida.innerHTML = "";
+      if (!j2.ok) {
+        saida.innerHTML = `<div class="msg-box msg-error">Não foi possível rastrear: ${j2.erro || "Código não encontrado"}</div>`;
+        return;
+      }
 
-    const urlRastreioOficial = j2.link_oficial || j2.link_rastreio || `https://linketrack.com/track?utm_source=plataforma&codigo=${code}`;
+      // Aplica identidade branding se vier no retorno
+      if (j2.loja) aplicarIdentidadeLoja(j2.loja);
 
-    let botoesAcao = "";
-    if (j2.is_external) {
-      botoesAcao = `
-        <div style="text-align:center; margin-bottom:20px; display: flex; justify-content: center; gap: 10px;">
-          <a href="${urlRastreioOficial}" target="_blank" class="btn-external" style="background: var(--primary);">
-            <i class="bi bi-box-arrow-up-right"></i> Tela Cheia
-          </a>
-          <button onclick="compartilharWhatsApp('${j2.codigo || code}', 'link')" 
-                  class="btn-external" style="background: #25d366;">
-            <i class="bi bi-whatsapp"></i> Compartilhar Link
-          </button>
+      const novaUrl = window.location.origin + window.location.pathname + "?code=" + encodeURIComponent(code);
+      window.history.pushState({ path: novaUrl }, '', novaUrl);
+
+      const eventos = j2.eventos || [];
+      saida.innerHTML = "";
+      const urlRastreioOficial = j2.link_oficial || j2.link_rastreio || `https://linketrack.com/track?utm_source=plataforma&codigo=${code}`;
+
+      let botoesAcao = j2.is_external ? 
+        `<div style="text-align:center; margin-bottom:20px; display: flex; justify-content: center; gap: 10px;">
+          <a href="${urlRastreioOficial}" target="_blank" class="btn-external"> <i class="bi bi-box-arrow-up-right"></i> Tela Cheia</a>
+          <button onclick="compartilharWhatsApp('${j2.codigo || code}', 'link')" class="btn-external" style="background: #25d366;"><i class="bi bi-whatsapp"></i> Compartilhar Link</button>
+        </div>` :
+        `<div style="text-align:center; margin-bottom:20px;">
+          <button onclick="compartilharWhatsApp('${j2.codigo || code}', '${eventos.length ? eventos[0].status : "Em trânsito"}')" class="btn-external" style="background: #25d366; border: none;"><i class="bi bi-whatsapp"></i> Compartilhar Status</button>
+        </div>`;
+
+      containerRes.innerHTML = `
+        <div class="result-header">
+           <span class="tracking-code"><i class="bi bi-upc-scan"></i> ${j2.codigo || code}</span>
+           <button class="refresh-btn" onclick="consultar()"><i class="bi bi-arrow-clockwise"></i></button>
         </div>
+        ${botoesAcao}
+        ${j2.is_external ? `<div style="margin-bottom:20px;"><div style="height: 600px; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: #fff;"><iframe src="${urlRastreioOficial}" style="width:100%; height:100%; border: none;"></iframe></div></div>` : renderTimeline(eventos, j2.is_external)}
       `;
-    } else {
-      botoesAcao = `
-        <div style="text-align:center; margin-bottom:20px;">
-          <button onclick="compartilharWhatsApp('${j2.codigo || code}', '${eventos.length ? eventos[0].status : "Em trânsito"}')" 
-                  class="btn-external" style="background: #25d366; border: none;">
-            <i class="bi bi-whatsapp"></i> Compartilhar Status
-          </button>
-        </div>
-      `;
+      containerRes.classList.remove("hidden");
+    } catch (e) {
+      saida.innerHTML = `<div class="msg-box msg-error">Erro de conexão: ${e.message}</div>`;
     }
-
-    containerRes.innerHTML = `
-      <div class="result-header">
-         <span class="tracking-code"><i class="bi bi-upc-scan"></i> ${j2.codigo || code}</span>
-         <button class="refresh-btn" onclick="consultar()"><i class="bi bi-arrow-clockwise"></i></button>
-      </div>
-
-      ${botoesAcao}
-
-      ${j2.is_external ? `
-        <div style="margin-bottom:20px;">
-           <div style="height: 600px; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: #fff;">
-             <iframe src="${urlRastreioOficial}" style="width:100%; height:100%; border: none;"></iframe>
-           </div>
-        </div>
-      ` : renderTimeline(eventos, j2.is_external)}
-    `;
-
-    containerRes.classList.remove("hidden");
-
-  } catch (e) {
-    saida.innerHTML = `<div class="msg-box msg-error">Erro de conexão: ${e.message}</div>`;
   }
-}
 
-function compartilharWhatsApp(codigo, status) {
+  function compartilharWhatsApp(codigo, status) {
     const linkRastreio = window.location.origin + window.location.pathname + "?code=" + codigo;
-    let mensagem = "";
-    if (status === 'link') {
-        mensagem = `Olá! Acompanhe a entrega do seu pedido ${codigo} aqui: ${linkRastreio}`;
-    } else {
-        mensagem = `Olá! O status do seu pedido ${codigo} é: *${status}*. Acompanhe aqui: ${linkRastreio}`;
-    }
+    const mensagem = status === 'link' ? `Olá! Acompanhe a entrega do seu pedido ${codigo} aqui: ${linkRastreio}` : `Olá! O status do seu pedido ${codigo} é: *${status}*. Acompanhe aqui: ${linkRastreio}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(mensagem)}`, '_blank');
-}
+  }
 
   window.addEventListener('load', function() {
-    inicializarIdentidadeLoja(); // Puxa logo e cores no carregamento da página dinamicamente
-    const codeParam = qs("code");
-    const idParam = qs("id");
-    if (codeParam || idParam) {
-      consultar();
-    }
+    inicializarIdentidadeLoja(); 
+    if (qs("code") || qs("id")) consultar();
   });
-
 </script>
-
 </body>
 </html>
