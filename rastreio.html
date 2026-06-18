@@ -520,7 +520,7 @@ async function consultar(){
     saida.innerHTML = "";
     
     // Define dinamicamente o link oficial (seja da Frenet/Correios para Correios ou link da Jadlog)
-    const urlRastreioOficial = j2.link_oficial || j2.link_rastreio || `https://rastreio.correios.com.br/app/resultado.php?objeto=${code}`;
+    const urlRastreioOficial = j2.link_oficial || j2.link_rastreio || `https://linketrack.com/track?utm_source=idea.acessorios&custom=dea&codigo=${code}`;
 
     containerRes.innerHTML = `
       <div class="result-header">
