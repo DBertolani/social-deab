@@ -542,6 +542,11 @@ async function consultar() {
       return;
     }
 
+    // --- AJUSTE PARA ATUALIZAR A URL ---
+    const novaUrl = window.location.origin + window.location.pathname + "?code=" + encodeURIComponent(code);
+    window.history.pushState({ path: novaUrl }, '', novaUrl);
+    // -----------------------------------------------
+
     // Lógica para quando o código existe mas não tem eventos (ex: não postado ou inválido)
     const eventos = j2.eventos || [];
     const naoPostado = !j2.is_external && eventos.length === 0;
