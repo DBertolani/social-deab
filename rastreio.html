@@ -417,17 +417,17 @@
   }
 
   // --- LÓGICA DE IDENTIDADE (WHITE LABEL) ---
-  function aplicarIdentidadeLoja(loja) {
+function aplicarIdentidadeLoja(loja) {
     if (!loja) return;
     
-    // Atualiza Cores
+    // Cores
     if (loja.corPrimaria) {
       document.documentElement.style.setProperty('--primary', loja.corPrimaria);
       document.documentElement.style.setProperty('--primary-light', loja.corPrimaria + "1A"); 
       document.querySelector('meta[name="theme-color"]').setAttribute("content", loja.corPrimaria);
     }
     
-    // Atualiza Textos e Meta Tags
+    // Textos e Meta Tags
     if (loja.nomeLoja) {
       document.title = `Central de Rastreio | ${loja.nomeLoja}`;
       document.getElementById("loja-titulo-header").textContent = loja.nomeLoja;
@@ -441,25 +441,25 @@
       document.getElementById("og-desc").setAttribute("content", loja.descricaoLoja);
     }
     
-    // Atualiza Logo
+    // Logo
     if (loja.logoLoja) {
       const imgContainer = document.getElementById("loja-logo-container");
       imgContainer.innerHTML = `<img src="${loja.logoLoja}" alt="Logo">`;
       imgContainer.style.background = "transparent";
       imgContainer.style.boxShadow = "none";
       document.getElementById("og-image").setAttribute("content", loja.logoLoja);
+    }
 
-      // 2. PARA O FAVICON:
-        if (loja.favicon) {
-            const favicon = document.querySelector('link[rel="icon"]');
-            if (favicon) {
-                // Se for do Drive, precisamos garantir que ele gere o link correto da imagem
-                // A lógica do extrairIdDriveConfigFrontend que já temos serve para isso
-                favicon.href = loja.favicon.includes("drive.google.com") 
-                               ? "https://drive.google.com/thumbnail?id=" + extrairIdDriveConfigFrontend(loja.favicon) + "&sz=w64" 
-                               : loja.favicon;
-            }
-        }
+    // Favicon
+    if (loja.favicon) {
+       const favicon = document.querySelector('link[rel="icon"]');
+       if (favicon) {
+           favicon.href = loja.favicon.includes("drive.google.com") 
+              ? "https://drive.google.com/thumbnail?id=" + extrairIdDriveConfigFrontend(loja.favicon) + "&sz=w64" 
+              : loja.favicon;
+       }
+    }
+    
     document.getElementById("og-url").setAttribute("content", window.location.href);
   }
 
