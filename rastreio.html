@@ -4,13 +4,13 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   
-  <title>Central de Rastreio | iD&A</title>
+  <title>Central de Rastreio | Acompanhe seu pedido</title>
   <meta name="description" content="Acompanhe a entrega do seu pedido em tempo real. Rastreamento seguro, rápido e sem anúncios."/>
   
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://social.deab.com.br/rastreio.html" />
-  <meta property="og:title" content="📦 Rastreie seu Pedido em Tempo Real | iD&A" />
-  <meta property="og:description" content="Acompanhe o status da sua entrega de forma simples e rápida. Clique para ver onde está o seu pacote agora!" />
+  <meta property="og:title" content="📦 Rastreie seu Pedido em Tempo Real" />
+  <meta property="og:description" content="Acompanhe o status da sua entrega de forma simples e rápida." />
   
   <meta property="og:image" content="https://cdn-icons-png.flaticon.com/512/3063/3063822.png" />
   <meta property="og:image:type" content="image/png" />
@@ -31,7 +31,7 @@
     :root {
       --bg: #f3f4f6;
       --card-bg: #ffffff;
-      --primary: #2563eb; /* Azul Brand */
+      --primary: #2563eb; /* Será alterado dinamicamente via JS */
       --primary-light: #eff6ff;
       --success: #16a34a;
       --success-light: #dcfce7;
@@ -54,7 +54,6 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* Header Estilo App */
     header {
       background: var(--card-bg);
       padding: 20px 0;
@@ -87,6 +86,13 @@
       color: #fff;
       font-size: 24px;
       box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+      overflow: hidden;
+    }
+    
+    .logo-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     h1 {
@@ -102,7 +108,6 @@
       color: var(--text-muted);
     }
 
-    /* Formulário de Busca */
     .search-card {
       background: var(--card-bg);
       border-radius: var(--radius);
@@ -156,7 +161,6 @@
     }
     button.refresh-btn:hover { background: #f3f4f6; }
 
-    /* Resultados */
     .result-header {
       display: flex;
       justify-content: space-between;
@@ -176,39 +180,15 @@
       font-weight: 600;
     }
 
-    /* KPIs (Status e Previsão) */
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 30px;
-    }
-
-    .kpi-card {
-      background: #f8fafc;
-      padding: 16px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .kpi-label { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-    .kpi-value { font-size: 15px; font-weight: 700; color: var(--text-main); }
-    
-    .status-highlight { color: var(--success); }
-
-    /* Timeline Moderna */
     .timeline {
       position: relative;
-      padding-left: 20px; /* espaço para linha */
+      padding-left: 20px;
     }
     
     .timeline::before {
       content: '';
       position: absolute;
-      left: 7px; /* centraliza no dot */
+      left: 7px;
       top: 10px;
       bottom: 20px;
       width: 2px;
@@ -226,7 +206,7 @@
 
     .dot {
       position: absolute;
-      left: -20px; /* Alinha com a linha principal */
+      left: -20px;
       top: 0;
       width: 16px;
       height: 16px;
@@ -236,7 +216,6 @@
       z-index: 2;
     }
 
-    /* Destaque para o evento mais recente */
     .event.latest .dot {
       border-color: var(--success);
       background: var(--success);
@@ -293,14 +272,12 @@
       font-weight: 500;
     }
 
-    /* Utilitários */
     .msg-box { padding: 16px; border-radius: 8px; margin-top: 16px; font-size: 14px; text-align: center; }
     .msg-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
     .msg-info { color: var(--text-muted); }
     
     .hidden { display: none; }
     
-    /* Configuração Script */
     .config-box {
       margin-top: 20px;
       padding: 15px;
@@ -311,7 +288,7 @@
     .config-box input { margin-bottom: 8px; }
 
     @media(min-width: 600px) {
-      .input-group { grid-template-columns: 1fr 1fr auto; }
+      .input-group { grid-template-columns: 1fr auto; }
     }
       
   .btn-external {
@@ -326,9 +303,8 @@
       transition: background 0.2s;
       margin-top: 10px;
     }
-    .btn-external:hover { background: #1d4ed8; color: #fff; }
+    .btn-external:hover { background: #000; color: #fff; }
 
-/* Spinner moderno */
 .loader-wrapper {
   display: flex;
   flex-direction: column;
@@ -352,8 +328,6 @@
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
-    
-    
   </style>
 </head>
 <body>
@@ -361,12 +335,12 @@
 <header>
   <div class="container">
     <div class="header-content">
-      <div class="logo-icon">
+      <div class="logo-icon" id="loja-logo-container">
         <i class="bi bi-box-seam"></i>
       </div>
       <div>
-        <h1>Central de Rastreio</h1>
-        <p class="subtitle">Acompanhe seu pedido em tempo real</p>
+        <h1 id="loja-titulo-header">Central de Rastreio</h1>
+        <p class="subtitle" id="loja-subtitulo-header">Acompanhe seu pedido em tempo real</p>
       </div>
     </div>
   </div>
@@ -376,7 +350,6 @@
   
 <div class="search-card">
   <div class="input-group">
-    <!-- Removi o ID e renomeei o código para ser único -->
     <input id="code" placeholder="Ex: AA123456789BR ou código Jadlog">
     <button onclick="consultar()"><i class="bi bi-search"></i> Buscar</button>
   </div>
@@ -390,8 +363,7 @@
   </div>
 </div>
 
-  <div id="resultado-container" class="search-card hidden">
-    </div>
+  <div id="resultado-container" class="search-card hidden"></div>
   
   <p style="text-align:center; font-size:12px; color:#9ca3af; margin-top:30px;">
     Rastreamento seguro e sem anúncios.
@@ -402,7 +374,6 @@
 <script>
   const LS_KEY = "SCRIPT_URL";
 
-  // Ícones baseados no status
   function getIconeStatus(status) {
     const s = status.toLowerCase();
     if (s.includes('entregue')) return '<i class="bi bi-check-circle-fill"></i>';
@@ -423,6 +394,7 @@
     if (!v) return;
     localStorage.setItem(LS_KEY, v);
     document.getElementById("boxScript").classList.add("hidden");
+    inicializarIdentidadeLoja();
     consultar();
   }
 
@@ -432,7 +404,6 @@
       const v = decodeURIComponent(scriptParam).trim();
       if (v) { localStorage.setItem(LS_KEY, v); return v; }
     }
-
     const ls = (localStorage.getItem(LS_KEY) || "").trim();
     if (ls) return ls;
 
@@ -444,8 +415,64 @@
         if (v) { localStorage.setItem(LS_KEY, v); return v; }
       }
     } catch(e){}
-
     return "";
+  }
+
+  // --- LÓGICA NOVA DE CUSTOMIZAÇÃO SAAS (BRANCA/WHITE LABEL) ---
+  function aplicarIdentidadeLoja(loja) {
+    if (!loja) return;
+    
+    // Atualiza Cores Dinamicamente
+    if (loja.corPrimaria) {
+      document.documentElement.style.setProperty('--primary', loja.corPrimaria);
+      document.documentElement.style.setProperty('--primary-light', loja.corPrimaria + "1A"); 
+    }
+    
+    // Atualiza Título
+    if (loja.nomeLoja) {
+      document.title = `Central de Rastreio | ${loja.nomeLoja}`;
+      document.getElementById("loja-titulo-header").textContent = loja.nomeLoja;
+    }
+    
+    if (loja.descricaoLoja) {
+      document.getElementById("loja-subtitulo-header").textContent = loja.descricaoLoja;
+    }
+    
+    // Atualiza a Logo
+    if (loja.logoLoja) {
+      const imgContainer = document.getElementById("loja-logo-container");
+      imgContainer.innerHTML = `<img src="${loja.logoLoja}" alt="Logo">`;
+      imgContainer.style.background = "transparent";
+      imgContainer.style.boxShadow = "none";
+    }
+  }
+
+  // Busca config.json pra já pintar a página logo que carrega, antes da busca
+  async function inicializarIdentidadeLoja() {
+    const script = await carregarConfigAuto();
+    if (!script) return;
+    try {
+      const response = await fetch(script, { cache: "no-store" });
+      const configPlanilha = await response.json();
+      if (configPlanilha) {
+        aplicarIdentidadeLoja({
+          nomeLoja: configPlanilha["NomeDaLoja"] || configPlanilha["NomeDoSite"],
+          logoLoja: configPlanilha["LogoDoSite"] ? (configPlanilha["LogoDoSite"].includes("drive.google.com") ? "https://drive.google.com/thumbnail?id=" + extrairIdDriveConfigFrontend(configPlanilha["LogoDoSite"]) + "&sz=w400" : configPlanilha["LogoDoSite"]) : "",
+          corPrimaria: configPlanilha["CorPrimaria"] || configPlanilha["CorDoSite"],
+          descricaoLoja: configPlanilha["DescricaoDoSite"]
+        });
+      }
+    } catch (e) {}
+  }
+
+  // Auxiliar front-end pra extrair ID caso a Logo venha crua no config puro
+  function extrairIdDriveConfigFrontend(url) {
+    if (!url) return "";
+    if (url.indexOf('id=') >= 0) return (url.split('id=')[1]).split('&')[0];
+    let parts = url.split('/');
+    let viewIndex = parts.indexOf('view');
+    if (viewIndex > -1) return parts[viewIndex - 1];
+    return parts[5] || "";
   }
 
   function formatarDataBR(dtStr){
@@ -454,7 +481,6 @@
       const s = String(dtStr).replace(" ", "T").replace(".000000","") + "-03:00";
       const d = new Date(s);
       if (isNaN(d.getTime())) return dtStr;
-      // Formato curto e bonito: 15/01 às 14:30
       return d.toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) + " às " + 
              d.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" });
     }catch(e){
@@ -462,16 +488,11 @@
     }
   }
 
-  function validarCodigo(code){
-    // Agora aceita qualquer código com 5 ou mais caracteres
-    return code.length >= 5; 
-  }
+  function validarCodigo(code){ return code.length >= 5; }
 
 function renderTimeline(eventos, isExternal){
-  // Se for transportadora externa (Jadlog/Loggi), não mostra timeline (apenas o botão)
   if(isExternal) return ''; 
 
-  // Caso Correios sem eventos ainda
   if(!eventos || !eventos.length){
     return `<div class="msg-box msg-info">
               <i class="bi bi-box-seam" style="font-size: 24px; color: var(--primary); display:block; margin-bottom: 10px;"></i>
@@ -506,7 +527,6 @@ async function consultar() {
   const saida = document.getElementById("saida");
   const containerRes = document.getElementById("resultado-container");
 
-  // Limpa tudo e mostra o carregando com o spinner
   saida.innerHTML = `
     <div class="loader-wrapper">
       <div class="spinner"></div>
@@ -517,7 +537,6 @@ async function consultar() {
   containerRes.classList.add("hidden");
   containerRes.innerHTML = "";
 
-  // Busca valores (ID é opcional/retrocompatível, Code é o principal)
   const idEl = document.getElementById("id");
   let id = idEl ? idEl.value.trim() : "";
   let code = (document.getElementById("code").value || "").trim().toUpperCase();
@@ -540,7 +559,6 @@ async function consultar() {
   }
 
   try {
-    // 1) Busca via SuperFrete ID (se fornecido)
     if (id && !code) {
       const url1 = script + "?rota=rastreio&id=" + encodeURIComponent(id);
       const r1 = await fetch(url1, { cache: "no-store" });
@@ -551,7 +569,6 @@ async function consultar() {
       }
     }
 
-    // 2) Busca Rastreio Universal (Wonca)
     const url2 = script + "?rota=rastreio_wonca&code=" + encodeURIComponent(code);
     const r2 = await fetch(url2, { cache: "no-store" });
     const j2 = await r2.json();
@@ -561,19 +578,19 @@ async function consultar() {
       return;
     }
 
-    // Ajuste da URL
+    // APLICA AS CORES LOGO DEPOIS DE CONSULTAR A WONCA
+    if (j2.loja) aplicarIdentidadeLoja(j2.loja);
+
     const novaUrl = window.location.origin + window.location.pathname + "?code=" + encodeURIComponent(code);
     window.history.pushState({ path: novaUrl }, '', novaUrl);
 
     const eventos = j2.eventos || [];
     saida.innerHTML = "";
 
-    const urlRastreioOficial = j2.link_oficial || j2.link_rastreio || `https://linketrack.com/track?utm_source=idea.acessorios&custom=dea&codigo=${code}`;
+    const urlRastreioOficial = j2.link_oficial || j2.link_rastreio || `https://linketrack.com/track?utm_source=plataforma&codigo=${code}`;
 
-    // --- LÓGICA DE BOTÕES UNIFICADA ---
     let botoesAcao = "";
     if (j2.is_external) {
-      // Botões para Transportadoras Externas
       botoesAcao = `
         <div style="text-align:center; margin-bottom:20px; display: flex; justify-content: center; gap: 10px;">
           <a href="${urlRastreioOficial}" target="_blank" class="btn-external" style="background: var(--primary);">
@@ -586,7 +603,6 @@ async function consultar() {
         </div>
       `;
     } else {
-      // Botões para Correios
       botoesAcao = `
         <div style="text-align:center; margin-bottom:20px;">
           <button onclick="compartilharWhatsApp('${j2.codigo || code}', '${eventos.length ? eventos[0].status : "Em trânsito"}')" 
@@ -597,7 +613,6 @@ async function consultar() {
       `;
     }
 
-    // --- RENDERIZAÇÃO FINAL ---
     containerRes.innerHTML = `
       <div class="result-header">
          <span class="tracking-code"><i class="bi bi-upc-scan"></i> ${j2.codigo || code}</span>
@@ -621,6 +636,7 @@ async function consultar() {
     saida.innerHTML = `<div class="msg-box msg-error">Erro de conexão: ${e.message}</div>`;
   }
 }
+
 function compartilharWhatsApp(codigo, status) {
     const linkRastreio = window.location.origin + window.location.pathname + "?code=" + codigo;
     let mensagem = "";
@@ -632,10 +648,8 @@ function compartilharWhatsApp(codigo, status) {
     window.open(`https://wa.me/?text=${encodeURIComponent(mensagem)}`, '_blank');
 }
 
-
-
-  // Quando a página terminar de carregar, verifica se tem código na URL
   window.addEventListener('load', function() {
+    inicializarIdentidadeLoja(); // Puxa logo e cores no carregamento da página dinamicamente
     const codeParam = qs("code");
     const idParam = qs("id");
     if (codeParam || idParam) {
