@@ -463,20 +463,19 @@ function aplicarIdentidadeLoja(loja) {
     document.getElementById("og-url").setAttribute("content", window.location.href);
   }
 
-  async function inicializarIdentidadeLoja() {
+async function inicializarIdentidadeLoja() {
     const script = await carregarConfigAuto();
     if (!script) return;
     try {
       const response = await fetch(script + "?rota=config", { cache: "no-store" });
-      const configPlanilha = await response.json();
-      if (configPlanilha) {
-        aplicarIdentidadeLoja({
-          nomeLoja: configPlanilha["NomeDaLoja"] || configPlanilha["NomeDoSite"],
-          logoLoja: configPlanilha["LogoDoSite"] ? (configPlanilha["LogoDoSite"].includes("drive.google.com") ? "https://drive.google.com/thumbnail?id=" + extrairIdDriveConfigFrontend(configPlanilha["LogoDoSite"]) + "&sz=w400" : configPlanilha["LogoDoSite"]) : "",
-          corPrimaria: configPlanilha["CorPrimaria"] || configPlanilha["CorDoSite"],
-          descricaoLoja: configPlanilha["DescricaoDoSite"]
-        });
-      }
+      const loja = await response.json();
+      aplicarIdentidadeLoja({
+        nomeLoja: loja["NomeDaLoja"] || loja["NomeDoSite"],
+        logoLoja: loja["LogoDoSite"] ? (loja["LogoDoSite"].includes("drive.google.com") ? "https://drive.google.com/thumbnail?id=" + extrairIdDriveConfigFrontend(loja["LogoDoSite"]) + "&sz=w400" : loja["LogoDoSite"]) : "",
+        favicon: loja["Favicon"] || loja["LogoDoSite"],
+        corPrimaria: loja["CorPrimaria"] || loja["CorDoSite"],
+        descricaoLoja: loja["DescricaoDoSite"]
+      });
     } catch (e) { console.error("Erro ao carregar configs da planilha", e); }
   }
 
