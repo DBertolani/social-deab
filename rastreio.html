@@ -568,6 +568,17 @@ function compartilharWhatsApp(codigo, status) {
     window.open(urlWpp, '_blank');
   }
 
+
+
+  // Quando a página terminar de carregar, verifica se tem código na URL
+  window.addEventListener('load', function() {
+    const codeParam = qs("code");
+    const idParam = qs("id");
+    if (codeParam || idParam) {
+      consultar();
+    }
+  });
+
 </script>
 
 </body>
