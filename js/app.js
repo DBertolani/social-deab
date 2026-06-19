@@ -853,18 +853,35 @@ function aplicar_config() {
     }
 
 
-    // 2. Títulos e SEO
-    var titulo = CONFIG_LOJA.TituloAba || CONFIG_LOJA.NomeDoSite;
-    if (titulo) {
-        document.title = titulo;
-        var seoTitle = document.getElementById('seo_titulo');
-        if (seoTitle) seoTitle.innerText = titulo;
-    }
+// 2. Títulos e SEO Dinâmico (Totalmente parametrizado para o modelo SaaS)
+    var titulo = CONFIG_LOJA.TituloAba || CONFIG_LOJA.NomeDoSite || "Loja Virtual";
+    var descricaoGlobal = CONFIG_LOJA.DescricaoSEO || "Confira nosso catálogo de produtos.";
+    var urlAtual = window.location.href;
+    var logoUrl = CONFIG_LOJA.LogoDoSite ? obterLinkDiretoDrive(CONFIG_LOJA.LogoDoSite) : "";
 
-    if (CONFIG_LOJA.DescricaoSEO) {
-        var metaDesc = document.getElementById('seo_descricao');
-        if (metaDesc) metaDesc.setAttribute("content", CONFIG_LOJA.DescricaoSEO);
-    }
+    // Atualiza o <title> e as tags de texto padrões
+    document.title = titulo;
+    var seoTitle = document.getElementById('seo_titulo');
+    if (seoTitle) seoTitle.innerText = titulo;
+
+    var metaDesc = document.getElementById('seo_descricao');
+    if (metaDesc) metaDesc.setAttribute("content", descricaoGlobal);
+
+    // Injeta dinamicamente as tags de compartilhamento Open Graph com base na planilha do cliente
+    const atualizarMetaOG_ = (propriedade, conteudo) => {
+        let el = document.querySelector(`meta[property="${propriedade}"]`);
+        if (!el) {
+            el = document.createElement('meta');
+            el.setAttribute('property', propriedade);
+            document.head.appendChild(el);
+        }
+        el.setAttribute('content', conteudo || "");
+    };
+
+    atualizarMetaOG_("og:title", CONFIG_LOJA.NomeDoSite || titulo);
+    atualizarMetaOG_("og:description", descricaoGlobal);
+    atualizarMetaOG_("og:image", logoUrl); // Usa a imagem de logo cadastrada na planilha como padrão do site
+    atualizarMetaOG_("og:url", urlAtual);
 
     // 3. Logo do Site (Restaurado e Melhorado)
     var logo = document.getElementById('logo_site');
