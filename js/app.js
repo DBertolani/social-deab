@@ -323,6 +323,15 @@ function aplicarRouteSePronto_() {
   const dados = obterProdutosFonte_();
   if (!Array.isArray(dados) || dados.length === 0) return;
 
+  // Forçar SEO imediatamente ao identificar produto
+  const produtoId = (ROUTE_PENDING.produtoId || "").trim();
+  if (produtoId) {
+    const prod = dados.find(p => String(p.ID) === produtoId);
+    if (prod) {
+      atualizarMetaTagsProduto(prod); // Chama a função que criamos no passo anterior
+    }
+  }
+
   const sep = (CONFIG_LOJA.SeparadorCategoria || ">").toString();
 
   // se ainda não leu a rota, lê agora
