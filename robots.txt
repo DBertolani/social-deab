@@ -1,0 +1,5 @@
+User-agent: Googlebot
+Allow: /
+User-agent: Googlebot-Image
+Allow: /
+Sitemap: https://social.deab.com.br/sitemap.xml
