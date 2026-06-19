@@ -1843,6 +1843,63 @@ function obterResumoDescricao(texto, maxChars) {
     return resumo;
 }
 
+// ==========================================
+// MÓDULO DE SEO DINÂMICO (SaaS / White-Label)
+// ==========================================
+function atualizarMetaTagsProduto(produto) {
+    if (!produto) return;
+
+    // Puxa o nome da loja dinamicamente da planilha do cliente
+    const nomeSite = CONFIG_LOJA.NomeDoSite || "Loja Virtual";
+    const tituloProd = produto.Produto + " | " + nomeSite;
+    const descProd = obterResumoDescricao(produto.Descrição, 160) || (CONFIG_LOJA.DescricaoSEO || "");
+    const urlProd = window.location.href; // URL dinâmica exata que o cliente está acessando
+    const imgProd = ajustarImagemDrive(produto.ImagemPrincipal, 800);
+
+    // 1. Atualiza o Título da Aba do Navegador (O que o Google mais lê)
+    document.title = tituloProd;
+
+    // Função interna inteligente: Cria a meta tag se não existir, ou atualiza se existir
+    const setMeta = (attrName, attrValue, content) => {
+        let element = document.querySelector(`meta[${attrName}="${attrValue}"]`);
+        if (!element) {
+            element = document.createElement('meta');
+            element.setAttribute(attrName, attrValue);
+            document.head.appendChild(element);
+        }
+        if (content) element.setAttribute('content', content);
+    };
+
+    // 2. Injeta Meta Tags padrão para Busca Orgânica (Google)
+    setMeta('name', 'description', descProd);
+
+    // 3. Injeta Open Graph (Gera o "Card bonito" ao colar o link no WhatsApp, FB, IG)
+    setMeta('property', 'og:title', tituloProd);
+    setMeta('property', 'og:description', descProd);
+    setMeta('property', 'og:image', imgProd);
+    setMeta('property', 'og:url', urlProd);
+    setMeta('property', 'og:type', 'product');
+}
+
+function restaurarMetaTagsLoja() {
+    // Quando o usuário fecha o produto, o site volta a ter a identidade principal da loja
+    const titulo = CONFIG_LOJA.TituloAba || CONFIG_LOJA.NomeDoSite || "Loja Virtual";
+    const desc = CONFIG_LOJA.DescricaoSEO || "";
+    const url = window.location.origin + window.location.pathname;
+    
+    document.title = titulo;
+
+    const setMeta = (attrName, attrValue, content) => {
+        let element = document.querySelector(`meta[${attrName}="${attrValue}"]`);
+        if (element && content) element.setAttribute('content', content);
+    };
+
+    setMeta('name', 'description', desc);
+    setMeta('property', 'og:title', titulo);
+    setMeta('property', 'og:description', desc);
+    setMeta('property', 'og:url', url);
+    setMeta('property', 'og:type', 'website');
+}
 
 function abrir_modal_ver(id) {
     var dados = (ALL_PRODUTOS && ALL_PRODUTOS.length)
@@ -1866,6 +1923,10 @@ function abrir_modal_ver(id) {
     document.getElementById('modalTituloProduto').innerText = produtoAtual.Produto;
     document.getElementById('modalPreco').innerText = 'R$ ' + parseFloat(produtoAtual.Preço).toFixed(2);
     const descCompleta = produtoAtual.Descrição || "";
+
+  // INJETA O SEO AQUI! (Ativa as tags para o produto atual)
+    atualizarMetaTagsProduto(produtoAtual);
+    // ----------------------------------------------------
 
     const resumoEl = document.getElementById('modalDescricaoResumo');
     const btnMais = document.getElementById('btnLerMaisDescricao');
@@ -3744,11 +3805,12 @@ if (offEl) {
         }
     });
 
-    // ✅ Ao fechar o modal do produto, remove ?produto= da URL (mantém ?cat se tiver)
+// ✅ Ao fechar o modal do produto, remove ?produto= da URL e reseta o SEO da loja
 const elProd = document.getElementById('modalProduto');
 if (elProd) {
   elProd.addEventListener('hidden.bs.modal', () => {
     clearProdutoFromUrl_("replace");
+    restaurarMetaTagsLoja(); // <--- Restaura o SEO global da loja aqui
   });
 }
 
